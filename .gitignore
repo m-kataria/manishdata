@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+.coverage
+
+# Node / SvelteKit
+node_modules/
+.svelte-kit/
+build/
+
+# Env files (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# Local DB / instance data
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

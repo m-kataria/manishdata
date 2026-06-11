@@ -1,0 +1,153 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    html {
+        background-color: #fbf9f8;
+    }
+    body {
+        font-family: 'Roboto', sans-serif;
+        background-color: #fbf9f8;
+        color: #1b1c1c;
+        -webkit-font-smoothing: antialiased;
+    }
+    h1,
+    .font-h1 {
+        font-weight: 600 !important;
+    }
+    ::selection {
+        background: #ffdad8;
+        color: #410007;
+    }
+    .material-symbols-outlined {
+        font-variation-settings:
+            'FILL' 0,
+            'wght' 400,
+            'GRAD' 0,
+            'opsz' 24;
+        font-size: 20px;
+        vertical-align: middle;
+        line-height: 1;
+    }
+}
+
+@layer components {
+    /* Section heading with brand red accent bar */
+    .section-heading {
+        border-left: 4px solid #d23235;
+        padding-left: 1.5rem;
+    }
+
+    /* ── Eyebrow label ─────────────────────────────────────────────────── */
+    .eyebrow {
+        @apply font-label-sm text-xs uppercase tracking-[0.2em] text-secondary;
+    }
+
+    /* ── Buttons ───────────────────────────────────────────────────────── */
+    .btn-primary {
+        @apply bg-primary-container text-white font-cta text-sm font-semibold uppercase tracking-normal px-6 py-2.5 hover:bg-primary transition-colors rounded-card disabled:opacity-40 disabled:cursor-not-allowed;
+    }
+    .btn-outline {
+        @apply border border-on-surface text-on-surface font-cta text-sm font-semibold uppercase tracking-normal px-6 py-2.5 hover:border-primary-container hover:text-primary-container transition-colors rounded-card bg-white disabled:opacity-40 disabled:cursor-not-allowed;
+    }
+    .btn-ghost {
+        @apply font-cta text-xs font-bold uppercase tracking-wider text-on-surface hover:text-primary-container transition-colors;
+    }
+
+    /* ── Form inputs ───────────────────────────────────────────────────── */
+    .field {
+        @apply bg-surface-container border border-zinc-300 text-on-surface font-body-md text-sm px-4 py-2.5 focus:outline-none focus:border-primary-container transition-colors w-full;
+    }
+    .field-label {
+        @apply font-label-sm text-xs uppercase tracking-[0.2em] text-secondary;
+    }
+
+    /* ── Cards ─────────────────────────────────────────────────────────── */
+    .card {
+        @apply bg-white border border-zinc-200 rounded-card;
+    }
+    .card-quiet {
+        @apply bg-surface-container-low border border-zinc-200 rounded-card;
+    }
+
+    /* ── Status badges (pills) ─────────────────────────────────────────── */
+    .badge-active {
+        @apply inline-flex items-center bg-primary-container text-white font-label-sm text-xs uppercase tracking-[0.1em] px-2.5 py-1 rounded-full;
+    }
+    .badge-pending {
+        @apply inline-flex items-center bg-surface-container-high text-on-surface font-label-sm text-xs uppercase tracking-[0.1em] px-2.5 py-1 rounded-full;
+    }
+    .badge-review {
+        @apply inline-flex items-center bg-zinc-900 text-white font-label-sm text-xs uppercase tracking-[0.1em] px-2.5 py-1 rounded-full;
+    }
+
+    /* Brand-channel badges — for identifying which external system content belongs to. */
+    .badge-bc {
+        @apply inline-flex items-center gap-1.5 bg-bc/10 text-bc font-label-sm text-xs uppercase tracking-[0.1em] px-2.5 py-1 rounded-full border border-bc/20;
+    }
+    .badge-sf {
+        @apply inline-flex items-center gap-1.5 bg-sf/10 text-sf font-label-sm text-xs uppercase tracking-[0.1em] px-2.5 py-1 rounded-full border border-sf/20;
+    }
+
+    /* ── Status dots (for connection indicators) ──────────────────────── */
+    .dot {
+        @apply inline-block w-2 h-2 rounded-full align-middle;
+    }
+    .dot-bc {
+        @apply dot bg-bc;
+    }
+    .dot-sf {
+        @apply dot bg-sf;
+    }
+    .dot-on {
+        @apply dot bg-primary-container;
+    }
+    .dot-off {
+        @apply dot bg-zinc-400;
+    }
+    .dot-fault {
+        @apply dot bg-error;
+    }
+
+    /* ── Tables ────────────────────────────────────────────────────────── */
+    .nrv-table {
+        @apply w-full border-collapse;
+    }
+    .nrv-table thead tr {
+        @apply border-b border-zinc-200;
+    }
+    .nrv-table thead th {
+        @apply text-left font-label-sm text-xs uppercase tracking-[0.2em] text-secondary px-4 py-3 font-medium;
+    }
+    .nrv-table tbody tr {
+        @apply border-b border-zinc-100 transition-colors;
+    }
+    .nrv-table tbody tr:hover {
+        @apply bg-surface-container-high;
+    }
+    .nrv-table tbody td {
+        @apply font-body-md text-sm text-on-surface px-4 py-3;
+    }
+    .nrv-table tbody td.muted {
+        @apply text-secondary;
+    }
+
+    /* ── Sidebar nav item ─────────────────────────────────────────────── */
+    .nav-item {
+        @apply font-label-sm text-sm text-on-surface px-3 py-2 hover:bg-surface-container-high transition-colors flex items-center gap-3;
+    }
+    .nav-item-active {
+        @apply font-label-sm text-sm text-white bg-primary-container px-3 py-2 flex items-center gap-3;
+    }
+}
+
+@layer utilities {
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+}
