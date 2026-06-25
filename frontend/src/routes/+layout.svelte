@@ -175,6 +175,17 @@
                         {darkMode ? 'light_mode' : 'dark_mode'}
                     </span>
                 </button>
+                <form method="POST" action="/login?/logout">
+                    <button
+                        type="submit"
+                        title="Sign out"
+                        aria-label="Sign out"
+                        class="inline-flex items-center gap-1.5 h-9 px-3 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/30 text-rose-600 dark:text-rose-400 transition-colors"
+                    >
+                        <span class="material-symbols-outlined" style="font-size: 20px">logout</span>
+                        <span class="hidden md:inline text-xs font-semibold uppercase tracking-wide">Sign out</span>
+                    </button>
+                </form>
             </div>
         </header>
 
