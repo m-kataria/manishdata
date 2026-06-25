@@ -1,90 +1,108 @@
 /**
- * Tailwind v3 port of Nerval's brand tokens (which target Tailwind v4 @theme syntax).
- * Class names match the brand guide exactly: bg-primary-container, text-on-surface, etc.
+ * Tailwind v3 brand tokens for the ICC App (Nerval Ops) — see
+ * C:\Users\manish\Downloads\ICC theme\icc-style-guide.md.
+ * Navy is the primary brand color (used for text + dark accents); teal is the
+ * accent color (CTAs, links, badges). Backgrounds are off-white.
+ * Class names like `bg-primary-container` / `text-on-surface` stay the same —
+ * only the values behind them changed.
  */
 
 /** @type {import('tailwindcss').Config} */
 export default {
+    darkMode: 'class',
     content: ['./src/**/*.{html,js,svelte,ts}'],
     theme: {
-        // Override radius globally — sharp corners are the rule.
-        // Only `rounded-card` (8px) and `rounded-full` allowed.
+        // ICC: default 4px radius everywhere; buttons stay pill (full).
         borderRadius: {
             none: '0',
-            DEFAULT: '0',
-            sm: '0',
-            md: '0',
-            lg: '0',
-            xl: '0',
-            '2xl': '0',
-            '3xl': '0',
+            DEFAULT: '4px',
+            sm: '4px',
+            md: '4px',
+            lg: '4px',
+            xl: '4px',
+            '2xl': '8px',
+            '3xl': '12px',
             full: '9999px',
-            card: '8px'
+            card: '4px'
         },
         extend: {
             colors: {
-                // ── Primary (Nerval red) ────────────────────────────────────
+                // ── Primary = ICC Teal (accent / CTAs / highlights) ─────────
+                // Kept as `primary*` so existing utility classes
+                // (bg-primary-container, text-on-primary-container, etc.) re-skin.
                 primary: {
-                    DEFAULT: '#a82628',
-                    container: '#d23235',
-                    fixed: '#ffdad8',
-                    'fixed-dim': '#ffb3b1'
+                    DEFAULT: '#3ba5a5', // teal-dark — hover state
+                    container: '#4ec5c5', // teal — accents, primary actions
+                    fixed: '#cdeeee',
+                    'fixed-dim': '#9bdcdc'
                 },
-                'on-primary': '#ffffff',
-                'on-primary-container': '#ffdad8',
-                'on-primary-fixed': '#410007',
-                'on-primary-fixed-variant': '#92001c',
-                'inverse-primary': '#ffb3b1',
+                'on-primary': '#0d2942', // navy text on teal
+                'on-primary-container': '#0d2942',
+                'on-primary-fixed': '#0d2942',
+                'on-primary-fixed-variant': '#15405f',
+                'inverse-primary': '#4ec5c5',
 
-                // ── Secondary (warm grays) ─────────────────────────────────
+                // ── Secondary = muted slate (captions / helper text) ────────
                 secondary: {
-                    DEFAULT: '#5f5e5e',
-                    container: '#e2dfde',
-                    fixed: '#e5e2e1',
-                    'fixed-dim': '#c8c6c5'
+                    DEFAULT: '#6b7785',
+                    container: '#e5e7eb',
+                    fixed: '#e5e7eb',
+                    'fixed-dim': '#cbd1d8'
                 },
                 'on-secondary': '#ffffff',
-                'on-secondary-container': '#636262',
+                'on-secondary-container': '#0d2942',
 
-                // ── Tertiary (deep teal) ───────────────────────────────────
+                // ── Tertiary = Navy (deep brand) ───────────────────────────
                 tertiary: {
-                    DEFAULT: '#005468',
-                    container: '#006e87'
+                    DEFAULT: '#0d2942',
+                    container: '#15405f'
                 },
                 'on-tertiary': '#ffffff',
-                'on-tertiary-container': '#b6ebff',
+                'on-tertiary-container': '#cdeeee',
 
                 // ── Error ──────────────────────────────────────────────────
                 error: {
-                    DEFAULT: '#ba1a1a',
-                    container: '#ffdad6'
+                    DEFAULT: '#b91c1c',
+                    container: '#fee2e2'
                 },
                 'on-error': '#ffffff',
-                'on-error-container': '#93000a',
+                'on-error-container': '#7f1d1d',
 
-                // ── Surfaces ───────────────────────────────────────────────
-                background: '#fbf9f8',
+                // ── Surfaces (ICC off-white background, white cards) ────────
+                background: '#f7f9fa',
                 surface: {
-                    DEFAULT: '#fbf9f8',
-                    bright: '#fbf9f8',
-                    dim: '#dbdad9',
+                    DEFAULT: '#f7f9fa',
+                    bright: '#ffffff',
+                    dim: '#e5e7eb',
                     'container-lowest': '#ffffff',
-                    'container-low': '#f5f3f3',
-                    container: '#efeded',
-                    'container-high': '#eae8e7',
-                    'container-highest': '#e4e2e2',
-                    variant: '#e4e2e2'
+                    'container-low': '#f7f9fa',
+                    container: '#f1f4f6',
+                    'container-high': '#e9eef1',
+                    'container-highest': '#dde3e8',
+                    variant: '#e5e7eb'
                 },
-                'on-background': '#1b1c1c',
-                'on-surface': '#1b1c1c',
-                'on-surface-variant': '#5c403f',
-                'inverse-surface': '#303030',
-                'inverse-on-surface': '#f2f0f0',
+                'on-background': '#0d2942',
+                'on-surface': '#0d2942',
+                'on-surface-variant': '#6b7785',
+                'inverse-surface': '#0d2942',
+                'inverse-on-surface': '#f7f9fa',
 
                 // ── Outlines ───────────────────────────────────────────────
                 outline: {
-                    DEFAULT: '#906f6e',
-                    variant: '#e5bdbb'
+                    DEFAULT: '#d1d5db',
+                    variant: '#e5e7eb'
+                },
+
+                // ── Explicit ICC brand aliases ─────────────────────────────
+                // For pages that want to hit the colors by name.
+                icc: {
+                    navy: '#0d2942',
+                    'navy-soft': '#15405f',
+                    teal: '#4ec5c5',
+                    'teal-dark': '#3ba5a5',
+                    bg: '#f7f9fa',
+                    border: '#d1d5db',
+                    muted: '#6b7785'
                 },
 
                 // ── Integration-channel colors (BC / SF identification) ────
@@ -100,23 +118,25 @@ export default {
                 }
             },
             fontFamily: {
-                sans: ['Roboto', 'sans-serif'],
-                h1: ['manifold-cf', 'sans-serif'],
-                h2: ['manifold-cf', 'sans-serif'],
-                h3: ['manifold-cf', 'sans-serif'],
-                'body-lg': ['Roboto', 'sans-serif'],
-                'body-md': ['Roboto', 'sans-serif'],
-                'label-sm': ['Roboto', 'sans-serif'],
-                cta: ['Arimo', 'sans-serif'],
+                // ICC fonts: Plus Jakarta Sans (headings), Inter (body), Arimo (CTAs/labels).
+                sans: ['Inter', 'system-ui', 'sans-serif'],
+                h1: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+                h2: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+                h3: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+                'body-lg': ['Inter', 'system-ui', 'sans-serif'],
+                'body-md': ['Inter', 'system-ui', 'sans-serif'],
+                'label-sm': ['Arimo', 'system-ui', 'sans-serif'],
+                cta: ['Arimo', 'system-ui', 'sans-serif'],
                 'mono-data': ['ui-monospace', 'monospace']
             },
             fontSize: {
-                h1: ['52px', { lineHeight: '1.1', letterSpacing: '-0.02em' }],
-                h2: ['32px', { lineHeight: '1.2', letterSpacing: '-0.01em' }],
-                h3: ['24px', { lineHeight: '1.3' }],
-                'body-lg': ['18px', { lineHeight: '1.6' }],
-                'body-md': ['16px', { lineHeight: '1.6' }],
-                'label-sm': ['14px', { lineHeight: '1.2', letterSpacing: '0.02em' }]
+                // ICC type scale.
+                h1: ['48px', { lineHeight: '1.05', letterSpacing: '-0.01em' }],
+                h2: ['38px', { lineHeight: '1.10', letterSpacing: '-0.01em' }],
+                h3: ['22px', { lineHeight: '1.30' }],
+                'body-lg': ['18px', { lineHeight: '1.65' }],
+                'body-md': ['16px', { lineHeight: '1.65' }],
+                'label-sm': ['12px', { lineHeight: '1.40', letterSpacing: '0.12em' }]
             }
         }
     },

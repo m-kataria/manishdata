@@ -208,8 +208,49 @@ def create_customer_from_template(template_system_id: str, payload: dict[str, An
             "phoneNumber": payload.get("phoneNo", ""),
             "email": payload.get("email", ""),
             "currencyCode": "CAD",
+            "taxLiable": bool(payload.get("taxLiable", False)),
+            "taxAreaCode": payload.get("taxAreaCode", ""),
+            "paymentTermsCode": payload.get("paymentTermsCode", ""),
+            "locationCode": payload.get("locationCode", ""),
         },
     }
+
+
+def get_component_prices(customer_number: str, components: list[dict[str, str]]) -> dict[str, Any]:
+    # Deterministic-ish mock: hash itemNo to a price in [25, 250]
+    def _mock_price(item_no: str) -> float:
+        h = sum(ord(c) for c in (item_no or "MOCK"))
+        return round(25 + (h % 226) + (h % 100) / 100, 2)
+
+    return {
+        "priceGroup": "CONTRACTOR",
+        "currency": "CAD",
+        "prices": [
+            {
+                "itemNo": c.get("itemNo", ""),
+                "variantCode": c.get("variantCode", "") or "",
+                "unitPrice": _mock_price(c.get("itemNo", "")),
+            }
+            for c in components
+        ],
+    }
+
+
+MOCK_PAYMENT_TERMS = [
+    {"id": "pt-1", "code": "COD", "displayName": "Cash on Delivery", "dueDateCalculation": "0D"},
+    {"id": "pt-2", "code": "NET14", "displayName": "Net 14 days", "dueDateCalculation": "14D"},
+    {"id": "pt-3", "code": "NET30", "displayName": "Net 30 days", "dueDateCalculation": "30D"},
+    {"id": "pt-4", "code": "NET60", "displayName": "Net 60 days", "dueDateCalculation": "60D"},
+    {"id": "pt-5", "code": "PREPAY", "displayName": "Prepayment required", "dueDateCalculation": "0D"},
+]
+
+
+MOCK_LOCATIONS = [
+    {"id": "loc-1", "code": "BLAIRMORE", "displayName": "Blairmore Warehouse"},
+    {"id": "loc-2", "code": "CALGARY", "displayName": "Calgary Branch"},
+    {"id": "loc-3", "code": "EDMONTON", "displayName": "Edmonton Branch"},
+    {"id": "loc-4", "code": "MAIN", "displayName": "Main Warehouse"},
+]
 
 
 MOCK_SALES_QUOTES = [
@@ -379,10 +420,78 @@ def list_sku_inventory_flat(q: str = "", location: str = "", top: int = 500) -> 
     return rows[:top]
 
 
+def list_variant_pricing_rows(
+    q: str = "", location: str = "", top: int = 2000
+) -> dict[str, Any]:
+    """Mock flat (item × variant × location) pricing rows. Mirrors the live BC shape."""
+    sku_rows = list_sku_inventory_flat(top=10000)
+    if location:
+        sku_rows = [r for r in sku_rows if r["locationCode"] == location]
+
+    rows: list[dict[str, Any]] = []
+    for s in sku_rows:
+        item = next((i for i in MOCK_ITEMS if i["number"] == s["itemNo"]), None)
+        variant = (
+            next((v for v in item["variants"] if v["code"] == s["variantCode"]), None)
+            if item
+            else None
+        )
+        base = variant.get("_basePrice") if variant else None
+        prices = []
+        for g in MOCK_PRICE_GROUPS:
+            unit = round(base * _GROUP_MULTIPLIERS[g["code"]], 2) if base is not None else None
+            prices.append(
+                {
+                    "groupCode": g["code"],
+                    "groupDescription": g["description"],
+                    "unitPrice": unit,
+                    "currency": "CAD",
+                }
+            )
+        rows.append(
+            {
+                "itemNo": s["itemNo"],
+                "itemDescription": s["itemDescription"],
+                "variantCode": s["variantCode"],
+                "variantDescription": s["variantDescription"],
+                "locationCode": s["locationCode"],
+                "unitOfMeasure": s["unitOfMeasure"],
+                "inventory": float(s["inventory"]) or None,
+                "qtyOnSalesOrder": float(s.get("qtyOnSalesOrder") or 0),
+                "prices": prices,
+            }
+        )
+
+    if q:
+        term = q.lower()
+        rows = [
+            r
+            for r in rows
+            if term in r["itemNo"].lower()
+            or term in (r["itemDescription"] or "").lower()
+            or term in (r["variantCode"] or "").lower()
+            or term in (r["variantDescription"] or "").lower()
+            or term in (r["locationCode"] or "").lower()
+        ]
+    rows.sort(key=lambda r: (r["itemNo"], r["variantCode"], r["locationCode"]))
+    locations = sorted({r["locationCode"] for r in rows if r["locationCode"]})
+    return {"priceGroups": MOCK_PRICE_GROUPS, "rows": rows[:top], "locations": locations}
+
+
 def get_pricing_matrix(item_no: str) -> dict[str, Any] | None:
     item = next((i for i in MOCK_ITEMS if i["number"] == item_no), None)
     if item is None:
         return None
+
+    # Derive inventory per variant from the same generator used by list_sku_inventory_flat,
+    # summed across locations, so the pricing page agrees with the inventory page.
+    sku_rows = list_sku_inventory_flat(top=10000)
+    inv_by_variant: dict[str, float] = {}
+    for s in sku_rows:
+        if s["itemNo"] != item_no:
+            continue
+        vc = s.get("variantCode") or ""
+        inv_by_variant[vc] = inv_by_variant.get(vc, 0.0) + float(s.get("inventory") or 0)
 
     variants_out: list[dict[str, Any]] = []
     for v in item["variants"]:
@@ -400,6 +509,7 @@ def get_pricing_matrix(item_no: str) -> dict[str, Any] | None:
             {
                 "code": v["code"],
                 "description": v["description"],
+                "inventory": inv_by_variant.get(v["code"]),
                 "prices": prices,
             }
         )

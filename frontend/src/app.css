@@ -4,21 +4,35 @@
 
 @layer base {
     html {
-        background-color: #fbf9f8;
+        background-color: #f7f9fa;
     }
     body {
-        font-family: 'Roboto', sans-serif;
-        background-color: #fbf9f8;
-        color: #1b1c1c;
+        font-family: 'Inter', system-ui, sans-serif;
+        font-size: 16px;
+        line-height: 1.65;
+        background-color: #f7f9fa;
+        color: #0d2942;
         -webkit-font-smoothing: antialiased;
     }
     h1,
+    h2,
+    h3,
+    h4,
+    .font-h1,
+    .font-h2,
+    .font-h3 {
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+        color: #0d2942;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+    }
+    h1,
     .font-h1 {
-        font-weight: 600 !important;
+        font-weight: 800 !important;
     }
     ::selection {
-        background: #ffdad8;
-        color: #410007;
+        background: #cdeeee;
+        color: #0d2942;
     }
     .material-symbols-outlined {
         font-variation-settings:
@@ -33,42 +47,48 @@
 }
 
 @layer components {
-    /* Section heading with brand red accent bar */
+    /* Section heading with ICC teal accent bar */
     .section-heading {
-        border-left: 4px solid #d23235;
+        border-left: 4px solid #4ec5c5;
         padding-left: 1.5rem;
     }
 
     /* ── Eyebrow label ─────────────────────────────────────────────────── */
     .eyebrow {
-        @apply font-label-sm text-xs uppercase tracking-[0.2em] text-secondary;
+        @apply font-label-sm text-xs uppercase tracking-[0.22em] text-secondary font-bold;
     }
 
-    /* ── Buttons ───────────────────────────────────────────────────────── */
+    /* ── Buttons (ICC pill style, teal CTA + navy outline) ─────────────── */
     .btn-primary {
-        @apply bg-primary-container text-white font-cta text-sm font-semibold uppercase tracking-normal px-6 py-2.5 hover:bg-primary transition-colors rounded-card disabled:opacity-40 disabled:cursor-not-allowed;
+        @apply bg-primary-container text-on-primary-container font-cta text-sm font-bold uppercase tracking-[0.04em] px-6 py-2.5 hover:bg-white hover:ring-1 hover:ring-primary-container transition-all rounded-full disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap;
+        line-height: 1;
     }
     .btn-outline {
-        @apply border border-on-surface text-on-surface font-cta text-sm font-semibold uppercase tracking-normal px-6 py-2.5 hover:border-primary-container hover:text-primary-container transition-colors rounded-card bg-white disabled:opacity-40 disabled:cursor-not-allowed;
+        @apply border-2 border-tertiary text-tertiary font-cta text-sm font-bold uppercase tracking-[0.04em] px-6 py-2.5 hover:bg-tertiary hover:text-white transition-colors rounded-full bg-transparent disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap;
+        line-height: 1;
     }
     .btn-ghost {
-        @apply font-cta text-xs font-bold uppercase tracking-wider text-on-surface hover:text-primary-container transition-colors;
+        @apply font-cta text-xs font-bold uppercase tracking-[0.04em] text-tertiary hover:text-primary transition-colors;
+    }
+    .btn-danger {
+        @apply bg-error text-white font-cta text-sm font-bold uppercase tracking-[0.04em] px-6 py-2.5 hover:opacity-90 transition-opacity rounded-full disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap;
+        line-height: 1;
     }
 
     /* ── Form inputs ───────────────────────────────────────────────────── */
     .field {
-        @apply bg-surface-container border border-zinc-300 text-on-surface font-body-md text-sm px-4 py-2.5 focus:outline-none focus:border-primary-container transition-colors w-full;
+        @apply bg-white border border-outline text-on-surface font-body-md text-base px-4 py-2.5 focus:outline-none focus:border-primary-container focus:ring-2 focus:ring-primary-container/30 transition-colors w-full rounded;
     }
     .field-label {
-        @apply font-label-sm text-xs uppercase tracking-[0.2em] text-secondary;
+        @apply font-label-sm text-xs uppercase tracking-[0.12em] text-tertiary font-bold;
     }
 
     /* ── Cards ─────────────────────────────────────────────────────────── */
     .card {
-        @apply bg-white border border-zinc-200 rounded-card;
+        @apply bg-white border border-outline rounded;
     }
     .card-quiet {
-        @apply bg-surface-container-low border border-zinc-200 rounded-card;
+        @apply bg-surface-container-low border border-outline rounded;
     }
 
     /* ── Status badges (pills) ─────────────────────────────────────────── */
@@ -150,4 +170,89 @@
         -ms-overflow-style: none;
         scrollbar-width: none;
     }
+}
+
+/* Shared indeterminate slide animation used by LoadingBar and the layout's
+   top-of-page navigation progress bar. */
+@keyframes nrv-indet {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(250%); }
+}
+.nrv-indeterminate {
+    animation: nrv-indet 1.4s ease-in-out infinite;
+}
+
+/* ── Dark mode overrides ─────────────────────────────────────────────────
+   Re-skins the most-used Tailwind utilities so pages remain readable in
+   dark mode without touching every component. */
+html.dark {
+    background-color: #0a0a0a;
+    color-scheme: dark;
+}
+html.dark body {
+    background-color: #0a0a0a;
+    color: #f4f4f5;
+}
+html.dark .bg-white { background-color: #18181b !important; }
+html.dark .bg-surface,
+html.dark .bg-surface-container-lowest { background-color: #1f1f23 !important; }
+html.dark .bg-surface-container-low { background-color: #141416 !important; }
+html.dark .bg-surface-container { background-color: #1f1f23 !important; }
+html.dark .bg-surface-container-high { background-color: #28282e !important; }
+html.dark .bg-surface-container-highest { background-color: #2f2f35 !important; }
+html.dark .bg-zinc-100 { background-color: #28282e !important; }
+html.dark .bg-zinc-50 { background-color: #1f1f23 !important; }
+
+html.dark .text-on-surface { color: #f4f4f5 !important; }
+html.dark .text-secondary,
+html.dark .text-on-surface-variant { color: #a1a1aa !important; }
+html.dark .text-zinc-900 { color: #f4f4f5 !important; }
+html.dark .text-zinc-700,
+html.dark .text-zinc-600 { color: #d4d4d8 !important; }
+html.dark .text-zinc-500,
+html.dark .text-zinc-400 { color: #a1a1aa !important; }
+
+html.dark .border-zinc-100,
+html.dark .border-zinc-200,
+html.dark .border-zinc-300 { border-color: #2e2e33 !important; }
+html.dark .divide-zinc-100 > * + * { border-color: #2e2e33 !important; }
+
+html.dark .card,
+html.dark .card-quiet { background-color: #18181b; border-color: #2e2e33; color: #f4f4f5; }
+html.dark .field {
+    background-color: #1f1f23;
+    border-color: #3a3a40;
+    color: #f4f4f5;
+}
+html.dark .field::placeholder { color: #71717a; }
+html.dark .btn-outline {
+    background-color: #18181b;
+    border-color: #3a3a40;
+    color: #f4f4f5;
+}
+html.dark .badge-pending {
+    background-color: #28282e;
+    color: #f4f4f5;
+}
+html.dark .badge-review {
+    background-color: #f4f4f5;
+    color: #18181b;
+}
+html.dark .nav-item { color: #d4d4d8; }
+html.dark .nav-item:hover { background-color: #28282e; }
+html.dark .nrv-table thead tr { border-color: #2e2e33; }
+html.dark .nrv-table tbody tr { border-color: #232328; }
+html.dark .nrv-table tbody tr:hover { background-color: #232328; }
+html.dark .nrv-table tbody td { color: #f4f4f5; }
+html.dark .nrv-table tbody td.muted { color: #a1a1aa; }
+
+/* Sidebar */
+html.dark aside { background-color: #0f0f12 !important; border-color: #2e2e33 !important; }
+html.dark aside .border-zinc-200 { border-color: #2e2e33 !important; }
+
+/* Hamburger/theme toggle floating buttons */
+html.dark .theme-fab {
+    background-color: #18181b;
+    border-color: #2e2e33;
+    color: #f4f4f5;
 }

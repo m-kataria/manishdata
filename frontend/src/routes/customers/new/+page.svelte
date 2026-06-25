@@ -11,7 +11,7 @@
     $: selectedTemplate = data.templates.find((t) => t.systemId === selectedTemplateId);
 </script>
 
-<div class="px-8 py-8 max-w-[920px]">
+<div class="px-8 py-8 mx-auto max-w-[920px]">
     <div class="mb-8 flex items-end justify-between gap-6 flex-wrap">
         <div>
             <p class="eyebrow mb-1">
@@ -166,6 +166,32 @@
                 <div class="flex flex-col gap-1">
                     <label for="countryRegionCode" class="field-label">Country code</label>
                     <input id="countryRegionCode" name="countryRegionCode" type="text" placeholder="CA" maxlength="10" value={form?.form?.countryRegionCode ?? ''} class="field" />
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label for="taxAreaCode" class="field-label">Tax Area Code</label>
+                    <input id="taxAreaCode" name="taxAreaCode" type="text" placeholder="AB" maxlength="20" value={form?.form?.taxAreaCode ?? ''} class="field" />
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label for="paymentTermsCode" class="field-label">Payment Terms</label>
+                    <select id="paymentTermsCode" name="paymentTermsCode" class="field" value={form?.form?.paymentTermsCode ?? ''}>
+                        <option value="">— Keep template default —</option>
+                        {#each data.paymentTerms as p}
+                            <option value={p.code}>{p.code}{#if p.displayName && p.displayName !== p.code} — {p.displayName}{/if}</option>
+                        {/each}
+                    </select>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label for="locationCode" class="field-label">Location</label>
+                    <select id="locationCode" name="locationCode" class="field" value={form?.form?.locationCode ?? ''}>
+                        <option value="">— Keep template default —</option>
+                        {#each data.locations as l}
+                            <option value={l.code}>{l.code}{#if l.displayName && l.displayName !== l.code} — {l.displayName}{/if}</option>
+                        {/each}
+                    </select>
+                </div>
+                <div class="flex items-center gap-2 md:col-span-2 pt-2">
+                    <input id="taxLiable" name="taxLiable" type="checkbox" class="h-4 w-4" checked={form?.form?.taxLiable ?? true} />
+                    <label for="taxLiable" class="field-label !mb-0">Tax Liable</label>
                 </div>
             </div>
         </section>

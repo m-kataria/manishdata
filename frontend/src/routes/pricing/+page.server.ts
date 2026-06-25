@@ -1,31 +1,33 @@
 import { callBackend } from '$lib/api';
-import type { BcItemListing, PricingMatrix } from '$lib/types';
+import type { VariantPricingResponse } from '$lib/types';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
     const q = event.url.searchParams.get('q') ?? '';
-    const item = event.url.searchParams.get('item') ?? '';
+    const location = event.url.searchParams.get('location') ?? '';
 
-    const itemsPath = q ? `/api/bc/items-search?q=${encodeURIComponent(q)}` : '/api/bc/items-search';
-    const itemsRes = await callBackend<BcItemListing[]>(event, itemsPath);
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (location) params.set('location', location);
+    const path = `/api/bc/pricing-rows${params.toString() ? `?${params}` : ''}`;
 
-    let matrix: PricingMatrix | null = null;
-    let matrixError: string | null = null;
-    if (item) {
-        const r = await callBackend<PricingMatrix>(
-            event,
-            `/api/bc/pricing-matrix?itemNo=${encodeURIComponent(item)}`
-        );
-        matrix = r.data;
-        matrixError = r.error;
-    }
+    const res = await callBackend<VariantPricingResponse>(event, path);
+
+    const isArchive = (code: string | undefined) =>
+        !!code && code.toLowerCase().includes('archive');
+
+    const rawRows = res.data?.rows ?? [];
+    const rows = rawRows.filter((r) => !isArchive(r.locationCode));
+
+    const rawLocations = res.data?.locations ?? [];
+    const locations = rawLocations.filter((l) => !isArchive(l));
 
     return {
         q,
-        selectedItemNumber: item,
-        items: itemsRes.data ?? [],
-        itemsError: itemsRes.error,
-        matrix,
-        matrixError
+        location,
+        priceGroups: res.data?.priceGroups ?? [],
+        rows,
+        locations,
+        error: res.error
     };
 };

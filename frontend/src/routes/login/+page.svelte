@@ -7,7 +7,10 @@
     let submitting = false;
 </script>
 
-<div class="min-h-screen bg-surface-container-low flex items-center justify-center p-6">
+<div
+    class="min-h-screen flex items-center justify-center p-6"
+    style="background: linear-gradient(135deg, #0A2032 0%, #253443 100%);"
+>
     <form
         method="POST"
         action="?/login"
@@ -61,9 +64,22 @@
                 </div>
             {/if}
 
-            <button type="submit" class="btn-primary w-full mt-2" disabled={submitting}>
+            <button
+                type="submit"
+                disabled={submitting}
+                class="signin-btn w-full mt-2 px-5 py-3 rounded-lg font-medium text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
                 {submitting ? 'Authenticating…' : 'Sign In'}
             </button>
         </div>
     </form>
 </div>
+
+<style>
+    .signin-btn {
+        background-color: #4ec5c5;
+    }
+    .signin-btn:hover:not(:disabled) {
+        background-color: #3aa8a8;
+    }
+</style>

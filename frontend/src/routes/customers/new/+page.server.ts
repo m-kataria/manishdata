@@ -1,19 +1,28 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { callBackend } from '$lib/api';
-import type { BcCustomerTemplate, BcDimensionValue } from '$lib/types';
+import type {
+    BcCustomerTemplate,
+    BcDimensionValue,
+    BcLocation,
+    BcPaymentTerm
+} from '$lib/types';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
-    const [templates, custCategory, businessType] = await Promise.all([
+    const [templates, custCategory, businessType, paymentTerms, locations] = await Promise.all([
         callBackend<BcCustomerTemplate[]>(event, '/api/bc/customer-templates'),
         callBackend<BcDimensionValue[]>(event, '/api/bc/dimension-values?code=CUST%20CATEGORY'),
-        callBackend<BcDimensionValue[]>(event, '/api/bc/dimension-values?code=BUSINESS%20TYPE')
+        callBackend<BcDimensionValue[]>(event, '/api/bc/dimension-values?code=BUSINESS%20TYPE'),
+        callBackend<BcPaymentTerm[]>(event, '/api/bc/payment-terms'),
+        callBackend<BcLocation[]>(event, '/api/bc/locations')
     ]);
     return {
         templates: templates.data ?? [],
         templatesError: templates.error,
         custCategoryValues: custCategory.data ?? [],
-        businessTypeValues: businessType.data ?? []
+        businessTypeValues: businessType.data ?? [],
+        paymentTerms: paymentTerms.data ?? [],
+        locations: locations.data ?? []
     };
 };
 
@@ -33,7 +42,11 @@ export const actions: Actions = {
             email: String(form.get('email') ?? '').trim(),
             contactName: String(form.get('contactName') ?? '').trim(),
             custCategory: String(form.get('custCategory') ?? '').trim(),
-            businessType: String(form.get('businessType') ?? '').trim()
+            businessType: String(form.get('businessType') ?? '').trim(),
+            taxAreaCode: String(form.get('taxAreaCode') ?? '').trim(),
+            paymentTermsCode: String(form.get('paymentTermsCode') ?? '').trim(),
+            locationCode: String(form.get('locationCode') ?? '').trim(),
+            taxLiable: form.get('taxLiable') === 'on'
         };
 
         if (!payload.templateSystemId) {

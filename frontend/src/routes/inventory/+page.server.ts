@@ -14,7 +14,11 @@ export const load: PageServerLoad = async (event) => {
     const path = `/api/bc/sku-inventory?${params.toString()}`;
 
     const res = await callBackend<BcSkuRow[]>(event, path);
-    const rows = res.data ?? [];
+    const rawRows = res.data ?? [];
+
+    const isArchive = (code: string | undefined) =>
+        !!code && code.toLowerCase().includes('archive');
+    const rows = rawRows.filter((r) => !isArchive(r.locationCode));
 
     const locations = Array.from(new Set(rows.map((r) => r.locationCode))).sort();
 

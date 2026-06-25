@@ -7,13 +7,26 @@
 
     let submitting = false;
     let q = '';
+
+    function fmtDate(d: Date): string {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+    const today = fmtDate(new Date());
+    const validUntilDefault = (() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 30);
+        return fmtDate(d);
+    })();
     $: filtered = q
         ? data.customers.filter(
               (c) =>
                   c.number.toLowerCase().includes(q.toLowerCase()) ||
                   (c.displayName || '').toLowerCase().includes(q.toLowerCase())
           )
-        : data.customers.slice(0, 50);
+        : data.customers;
 </script>
 
 <div class="px-8 py-8 max-w-[760px]">
@@ -68,9 +81,15 @@
             </select>
         </div>
 
-        <div class="flex flex-col gap-1">
-            <label for="documentDate" class="field-label">Document date</label>
-            <input id="documentDate" name="documentDate" type="date" class="field" />
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="flex flex-col gap-1">
+                <label for="documentDate" class="field-label">Document date</label>
+                <input id="documentDate" name="documentDate" type="date" class="field" value={today} />
+            </div>
+            <div class="flex flex-col gap-1">
+                <label for="validUntil" class="field-label">Expiry date</label>
+                <input id="validUntil" name="validUntil" type="date" class="field" value={validUntilDefault} />
+            </div>
         </div>
 
         <div class="flex items-center justify-end gap-3 pt-2">

@@ -3,9 +3,13 @@ from datetime import datetime, timezone
 from flask import Blueprint, current_app, jsonify, request
 from flask_login import login_required
 
+from flask_login import current_user
+
 from ..extensions import db
 from ..models.inventory import InventoryItem
+from ..models.quote_owner import QuoteOwner
 from ..models.sync_log import SyncLog
+from ..models.user import User
 from ..services.business_central import BusinessCentralError, build_client_from_config
 
 bp = Blueprint("bc", __name__, url_prefix="/api/bc")
@@ -26,11 +30,51 @@ def get_customers():
         return jsonify({"error": str(e)}), 502
 
 
+@bp.get("/customers/<number>")
+@login_required
+def get_customer(number: str):
+    try:
+        c = _client().get_customer_by_number(number)
+        if c is None:
+            return jsonify({"error": "customer not found"}), 404
+        return jsonify(c)
+    except BusinessCentralError as e:
+        return jsonify({"error": str(e)}), 502
+
+
+@bp.patch("/customers/<system_id>")
+@login_required
+def patch_customer(system_id: str):
+    data = request.get_json(silent=True) or {}
+    try:
+        return jsonify(_client().update_customer(system_id, data))
+    except BusinessCentralError as e:
+        return jsonify({"error": str(e)}), 502
+
+
 @bp.get("/customer-templates")
 @login_required
 def customer_templates():
     try:
         return jsonify(_client().list_customer_templates())
+    except BusinessCentralError as e:
+        return jsonify({"error": str(e)}), 502
+
+
+@bp.get("/payment-terms")
+@login_required
+def payment_terms():
+    try:
+        return jsonify(_client().list_payment_terms())
+    except BusinessCentralError as e:
+        return jsonify({"error": str(e)}), 502
+
+
+@bp.get("/locations")
+@login_required
+def locations():
+    try:
+        return jsonify(_client().list_locations())
     except BusinessCentralError as e:
         return jsonify({"error": str(e)}), 502
 
@@ -150,8 +194,31 @@ def create_sales_quote():
         result = _client().create_sales_quote(
             customer_id=customer_id,
             document_date=data.get("documentDate"),
+            valid_until=data.get("validUntil"),
         )
-        return jsonify(result), 201
+    except BusinessCentralError as e:
+        return jsonify({"error": str(e)}), 502
+
+    quote_no = (result.get("number") or "").strip()
+    if quote_no:
+        try:
+            existing = db.session.query(QuoteOwner).filter_by(quote_no=quote_no).first()
+            if existing is None:
+                db.session.add(QuoteOwner(quote_no=quote_no, user_id=current_user.id))
+                db.session.commit()
+        except Exception:
+            db.session.rollback()
+    return jsonify(result), 201
+
+
+@bp.get("/sales-quotes/<quote_no>/header")
+@login_required
+def get_sales_quote_header(quote_no: str):
+    try:
+        q = _client().get_sales_quote_by_number(quote_no)
+        if q is None:
+            return jsonify({"error": "quote not found"}), 404
+        return jsonify(q)
     except BusinessCentralError as e:
         return jsonify({"error": str(e)}), 502
 
@@ -171,6 +238,21 @@ def create_sales_quote_line(quote_no: str):
     data = request.get_json(silent=True) or {}
     try:
         return jsonify(_client().create_quote_line(quote_no, data)), 201
+    except BusinessCentralError as e:
+        return jsonify({"error": str(e)}), 502
+
+
+@bp.post("/sales-quotes/<dest_no>/copy-from")
+@login_required
+def copy_quote_lines(dest_no: str):
+    data = request.get_json(silent=True) or {}
+    source_no = (data.get("sourceQuoteNo") or "").strip()
+    if not source_no:
+        return jsonify({"error": "sourceQuoteNo required"}), 400
+    if source_no == dest_no:
+        return jsonify({"error": "source and destination must differ"}), 400
+    try:
+        return jsonify(_client().clone_quote_lines(source_no, dest_no))
     except BusinessCentralError as e:
         return jsonify({"error": str(e)}), 502
 
@@ -245,9 +327,37 @@ def sales_quotes_list():
     status = request.args.get("status", "")
     top = int(request.args.get("top", 200))
     try:
-        return jsonify(_client().list_sales_quotes(q=q, status=status, top=top))
+        quotes = _client().list_sales_quotes(q=q, status=status, top=top)
     except BusinessCentralError as e:
         return jsonify({"error": str(e)}), 502
+
+    # "Created by" surfaces BC's salesperson code (what BC's UI shows). For
+    # quotes created through this app where BC's salesperson isn't set yet,
+    # fall back to the local QuoteOwner record.
+    numbers = [qq.get("number") for qq in quotes if qq.get("number")]
+    app_owner_by_no: dict[str, str] = {}
+    if numbers:
+        try:
+            rows = (
+                db.session.query(QuoteOwner, User)
+                .join(User, QuoteOwner.user_id == User.id)
+                .filter(QuoteOwner.quote_no.in_(numbers))
+                .all()
+            )
+            for owner, user in rows:
+                name = (user.display_name or user.username or "").strip()
+                if name:
+                    app_owner_by_no[owner.quote_no] = name
+        except Exception:
+            app_owner_by_no = {}
+
+    for qq in quotes:
+        bc_salesperson = (qq.get("salesperson") or "").strip()
+        if bc_salesperson:
+            qq["createdBy"] = bc_salesperson
+        else:
+            qq["createdBy"] = app_owner_by_no.get(qq.get("number") or "")
+    return jsonify(quotes)
 
 
 @bp.get("/sales-quotes/<quote_id>")
@@ -296,6 +406,25 @@ def sku_inventory():
         return jsonify({"error": str(e)}), 502
 
 
+@bp.get("/item-open-orders")
+@login_required
+def item_open_orders():
+    """Returns open SOs + open POs that contribute to a SKU's On SO / On PO."""
+    item_no = (request.args.get("itemNo") or "").strip()
+    variant_code = (request.args.get("variant") or "").strip()
+    location_code = (request.args.get("location") or "").strip()
+    if not item_no:
+        return jsonify({"error": "itemNo required"}), 400
+    try:
+        return jsonify(
+            _client().get_item_open_orders(
+                item_no, variant_code=variant_code, location_code=location_code
+            )
+        )
+    except BusinessCentralError as e:
+        return jsonify({"error": str(e)}), 502
+
+
 @bp.get("/items-search")
 @login_required
 def items_search():
@@ -315,6 +444,17 @@ def customer_price_groups():
         return jsonify({"error": str(e)}), 502
 
 
+@bp.get("/pricing-rows")
+@login_required
+def pricing_rows():
+    q = request.args.get("q", "").strip()
+    location = request.args.get("location", "").strip()
+    try:
+        return jsonify(_client().list_variant_pricing_rows(q=q, location=location))
+    except BusinessCentralError as e:
+        return jsonify({"error": str(e)}), 502
+
+
 @bp.get("/pricing-matrix")
 @login_required
 def pricing_matrix():
@@ -328,6 +468,20 @@ def pricing_matrix():
     if result is None:
         return jsonify({"error": "item not found"}), 404
     return jsonify(result)
+
+
+@bp.post("/component-prices")
+@login_required
+def component_prices():
+    data = request.get_json(silent=True) or {}
+    customer_no = (data.get("customerNumber") or "").strip()
+    components = data.get("components") or []
+    if not customer_no:
+        return jsonify({"error": "customerNumber required"}), 400
+    try:
+        return jsonify(_client().get_component_prices(customer_no, components))
+    except BusinessCentralError as e:
+        return jsonify({"error": str(e)}), 502
 
 
 @bp.post("/sync/inventory")

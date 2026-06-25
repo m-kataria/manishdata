@@ -26,6 +26,7 @@ class BusinessCentralClient:
     SCOPE = "https://api.businesscentral.dynamics.com/.default"
     BASE = "https://api.businesscentral.dynamics.com/v2.0"
     NRV_API_ROUTE = "/api/nrv/icc/v1.0"
+    NRV_OPS_API_ROUTE = "/api/nrv/ops/v1.0"
 
     # When credential values start with this prefix, we treat them as placeholders.
     PLACEHOLDER_PREFIXES = ("demo-", "your-", "xxx", "placeholder", "REPLACE", "")
@@ -167,6 +168,35 @@ class BusinessCentralClient:
 
     def get_customers(self, top: int = 100) -> list[dict[str, Any]]:
         return self._get("customers", f"$top={top}")
+
+    def list_payment_terms(self) -> list[dict[str, Any]]:
+        if self.use_mock():
+            from . import _bc_mock
+            return _bc_mock.MOCK_PAYMENT_TERMS
+        rows = self._get("paymentTerms", "$orderby=code")
+        return [
+            {
+                "id": r.get("id"),
+                "code": r.get("code", ""),
+                "displayName": r.get("displayName", ""),
+                "dueDateCalculation": r.get("dueDateCalculation", ""),
+            }
+            for r in rows
+        ]
+
+    def list_locations(self) -> list[dict[str, Any]]:
+        if self.use_mock():
+            from . import _bc_mock
+            return _bc_mock.MOCK_LOCATIONS
+        rows = self._get("locations", "$orderby=code")
+        return [
+            {
+                "id": r.get("id"),
+                "code": r.get("code", ""),
+                "displayName": r.get("displayName", ""),
+            }
+            for r in rows
+        ]
 
     def get_sales_orders(self, top: int = 100) -> list[dict[str, Any]]:
         return self._get("salesOrders", f"$top={top}")
@@ -338,6 +368,149 @@ class BusinessCentralClient:
             )
         return out
 
+    def get_item_open_orders(
+        self,
+        item_no: str,
+        variant_code: str = "",
+        location_code: str = "",
+    ) -> dict[str, Any]:
+        """For one SKU (item + optional variant + optional location), return the open
+        sales orders and open purchase orders that still have quantity outstanding
+        (ordered - shipped/received > 0). Used by the inventory page so users can
+        click 'On SO' / 'On PO' and see which docs contribute to the count.
+
+        Returns {salesOrders: [...], purchaseOrders: [...]} with each row carrying
+        the order number, party name, quantity outstanding, requested/expected date,
+        and variant/location codes resolved from GUIDs.
+        """
+        if self.use_mock():
+            return {"salesOrders": [], "purchaseOrders": []}
+
+        token = self._get_token()
+        session = requests.Session()
+        session.headers["Authorization"] = f"Bearer {token}"
+
+        from concurrent.futures import ThreadPoolExecutor
+
+        # Lookup tables for variant + location code resolution.
+        def fetch_variants() -> dict[str, str]:
+            esc = item_no.replace(chr(39), chr(39) + chr(39))
+            url = self._url(
+                "itemVariants",
+                f"$filter=itemNumber eq '{esc}'&$select=id,code",
+            )
+            r = session.get(url, timeout=20)
+            return {v["id"]: v.get("code", "") for v in r.json().get("value", [])} if r.ok else {}
+
+        def fetch_locations() -> dict[str, str]:
+            r = session.get(self._url("locations", "$select=id,code"), timeout=20)
+            return {l["id"]: l.get("code", "") for l in r.json().get("value", [])} if r.ok else {}
+
+        def fetch_sales() -> list[dict[str, Any]]:
+            r = session.get(
+                self._url(
+                    "salesOrders",
+                    "$expand=salesOrderLines"
+                    "&$select=number,customerName,customerNumber,status,orderDate,requestedDeliveryDate"
+                    "&$top=500",
+                ),
+                timeout=60,
+            )
+            return r.json().get("value", []) if r.ok else []
+
+        def fetch_purch() -> list[dict[str, Any]]:
+            r = session.get(
+                self._url(
+                    "purchaseOrders",
+                    "$expand=purchaseOrderLines"
+                    "&$select=number,vendorName,vendorNumber,status,orderDate"
+                    "&$top=500",
+                ),
+                timeout=60,
+            )
+            return r.json().get("value", []) if r.ok else []
+
+        with ThreadPoolExecutor(max_workers=4) as ex:
+            f_vars = ex.submit(fetch_variants)
+            f_locs = ex.submit(fetch_locations)
+            f_so = ex.submit(fetch_sales)
+            f_po = ex.submit(fetch_purch)
+            variant_code_by_id = f_vars.result()
+            location_code_by_id = f_locs.result()
+            sales = f_so.result()
+            purch = f_po.result()
+
+        want_variant = (variant_code or "").strip()
+        want_location = (location_code or "").strip()
+
+        out_so: list[dict[str, Any]] = []
+        for so in sales:
+            for line in (so.get("salesOrderLines") or []):
+                if (line.get("lineObjectNumber") or "") != item_no:
+                    continue
+                line_variant = variant_code_by_id.get(line.get("itemVariantId") or "", "")
+                line_location = location_code_by_id.get(line.get("locationId") or "", "")
+                if want_variant and line_variant != want_variant:
+                    continue
+                if want_location and line_location != want_location:
+                    continue
+                qty = float(line.get("quantity") or 0)
+                shipped = float(line.get("shippedQuantity") or 0)
+                outstanding = qty - shipped
+                if outstanding <= 0:
+                    continue
+                requested = so.get("requestedDeliveryDate") or ""
+                if (not requested) or requested.startswith("0001"):
+                    requested = line.get("shipmentDate") or ""
+                out_so.append({
+                    "orderNumber": so.get("number"),
+                    "customerNumber": so.get("customerNumber"),
+                    "customerName": so.get("customerName"),
+                    "status": so.get("status"),
+                    "orderDate": so.get("orderDate"),
+                    "requestedDeliveryDate": requested,
+                    "variantCode": variant_code_by_id.get(line.get("itemVariantId") or "", ""),
+                    "locationCode": location_code_by_id.get(line.get("locationId") or "", ""),
+                    "quantity": qty,
+                    "shippedQuantity": shipped,
+                    "outstanding": outstanding,
+                    "unitOfMeasureCode": line.get("unitOfMeasureCode"),
+                })
+
+        out_po: list[dict[str, Any]] = []
+        for po in purch:
+            for line in (po.get("purchaseOrderLines") or []):
+                if (line.get("lineObjectNumber") or "") != item_no:
+                    continue
+                line_variant = variant_code_by_id.get(line.get("itemVariantId") or "", "")
+                line_location = location_code_by_id.get(line.get("locationId") or "", "")
+                if want_variant and line_variant != want_variant:
+                    continue
+                if want_location and line_location != want_location:
+                    continue
+                qty = float(line.get("quantity") or 0)
+                received = float(line.get("receivedQuantity") or 0)
+                outstanding = qty - received
+                if outstanding <= 0:
+                    continue
+                out_po.append({
+                    "orderNumber": po.get("number"),
+                    "vendorNumber": po.get("vendorNumber"),
+                    "vendorName": po.get("vendorName"),
+                    "status": po.get("status"),
+                    "orderDate": po.get("orderDate"),
+                    "variantCode": variant_code_by_id.get(line.get("itemVariantId") or "", ""),
+                    "locationCode": location_code_by_id.get(line.get("locationId") or "", ""),
+                    "quantity": qty,
+                    "receivedQuantity": received,
+                    "outstanding": outstanding,
+                    "unitOfMeasureCode": line.get("unitOfMeasureCode"),
+                })
+
+        out_so.sort(key=lambda x: (x.get("orderNumber") or ""))
+        out_po.sort(key=lambda x: (x.get("orderNumber") or ""))
+        return {"salesOrders": out_so, "purchaseOrders": out_po}
+
     def list_items_for_pricing(self, q: str = "") -> list[dict[str, Any]]:
         """Returns lightweight item list for the pricing-page picker.
         BC OData rejects OR across distinct fields, so search is done client-side:
@@ -347,12 +520,12 @@ class BusinessCentralClient:
             from . import _bc_mock
             return _bc_mock.search_items(q)
 
-        # Without a search term, only show the first 50 items by number to keep
-        # the picker fast on initial load.
+        # Without a search term, show the first 1000 items by number. Users
+        # searching for items beyond this window should use the search box.
         if not q:
             items = self._get(
                 "items",
-                "$top=50&$orderby=number&$select=id,number,displayName,baseUnitOfMeasureCode",
+                "$top=1000&$orderby=number&$select=id,number,displayName,baseUnitOfMeasureCode",
             )
             return [
                 {
@@ -366,10 +539,10 @@ class BusinessCentralClient:
             ]
 
         # Search path: pull a wide set, filter case-insensitively in Python on
-        # both number and displayName, then trim back to 50 matches.
+        # both number and displayName. Return all matches (cap at 500 for UI sanity).
         items = self._get(
             "items",
-            "$top=2000&$orderby=number&$select=id,number,displayName,baseUnitOfMeasureCode",
+            "$top=10000&$orderby=number&$select=id,number,displayName,baseUnitOfMeasureCode",
         )
         term = q.lower()
         matched = [
@@ -386,7 +559,7 @@ class BusinessCentralClient:
                 "baseUnitOfMeasure": i.get("baseUnitOfMeasureCode"),
                 "variantCount": None,
             }
-            for i in matched[:50]
+            for i in matched[:500]
         ]
 
     def list_sales_quotes(
@@ -423,6 +596,16 @@ class BusinessCentralClient:
                 or term in (qq.get("shipToName") or qq.get("customerName") or "").lower()
             ]
         return quotes
+
+    def get_sales_quote_by_number(self, number: str) -> dict[str, Any] | None:
+        """Fetch a single sales quote header by its document number (e.g. SQ1000081)."""
+        if self.use_mock():
+            from . import _bc_mock
+            quotes = _bc_mock.list_sales_quotes(q=number, status="", top=1)
+            return quotes[0] if quotes else None
+        esc = number.replace("'", "''")
+        rows = self._get("salesQuotes", f"$filter=number eq '{esc}'&$top=1")
+        return rows[0] if rows else None
 
     def make_order_from_quote(self, quote_id: str) -> dict[str, Any]:
         """Calls BC's standard `Microsoft.NAV.makeOrder` bound action on a sales quote.
@@ -492,7 +675,10 @@ class BusinessCentralClient:
         }
 
     def create_sales_quote(
-        self, customer_id: str, document_date: str | None = None
+        self,
+        customer_id: str,
+        document_date: str | None = None,
+        valid_until: str | None = None,
     ) -> dict[str, Any]:
         """POST to standard /salesQuotes — returns the created draft quote header."""
         if self.use_mock():
@@ -502,6 +688,8 @@ class BusinessCentralClient:
         payload: dict[str, Any] = {"customerId": customer_id}
         if document_date:
             payload["documentDate"] = document_date
+        if valid_until:
+            payload["validUntilDate"] = valid_until
         res = requests.post(
             url,
             headers={
@@ -545,6 +733,21 @@ class BusinessCentralClient:
         # Default lineType to Item if itemNo provided and lineType missing
         if "itemNo" in payload and "lineType" not in payload:
             payload["lineType"] = "Item"
+        # NRV's salesQuoteLines POST does not auto-assign lineNo, so without one
+        # BC defaults to 0 and fails on the second insert with
+        # Internal_EntityWithSameKeyExists. Compute the next lineNo client-side
+        # using BC's standard 10000-step. Callers in tight loops can skip the
+        # extra list call by passing 'lineNo' on `line` directly.
+        if "lineNo" not in payload:
+            if "lineNo" in line and line["lineNo"]:
+                payload["lineNo"] = line["lineNo"]
+            else:
+                try:
+                    existing = self.list_quote_lines(document_number)
+                    next_no = max((int(l.get("lineNo") or 0) for l in existing), default=0) + 10000
+                    payload["lineNo"] = next_no
+                except BusinessCentralError:
+                    payload["lineNo"] = 10000
         res = requests.post(
             url,
             headers={
@@ -596,6 +799,140 @@ class BusinessCentralClient:
                 f"DELETE quote line failed: {res.status_code} {res.text[:300]}"
             )
 
+    def clone_quote_lines(self, source_no: str, dest_no: str) -> dict[str, Any]:
+        """Replicate every sales-quote line from source_no into dest_no, including
+        ATO assembly components. For each source line:
+          1. Create the dest line with ATA=0 so BC doesn't auto-create an
+             assembly order with the item's BOM defaults.
+          2. If the source line had ATA>0, set ATA on the dest line — BC then
+             creates an assembly order populated with BOM defaults.
+          3. Wipe those defaults and replace with the source's actual ATO
+             components so the destination matches the source exactly.
+
+        Returns a small report: { lines_copied, ato_lines_copied, warnings }.
+        """
+        if self.use_mock():
+            raise BusinessCentralError("Copy requires live BC connection")
+
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        source_lines = self.list_quote_lines(source_no)
+        if not source_lines:
+            return {"lines_copied": 0, "ato_lines_copied": 0, "warnings": []}
+
+        warnings: list[str] = []
+        ato_copied = 0
+        created_pairs: list[tuple[dict[str, Any], dict[str, Any]]] = []
+
+        # Precompute the starting lineNo on the destination so we don't refetch
+        # existing lines before every insert (one BC call instead of N).
+        try:
+            existing_dest = self.list_quote_lines(dest_no)
+            next_line_no = max(
+                (int(l.get("lineNo") or 0) for l in existing_dest), default=0
+            ) + 10000
+        except BusinessCentralError:
+            next_line_no = 10000
+
+        for src in source_lines:
+            payload: dict[str, Any] = {
+                "lineType": src.get("lineType") or "Item",
+                "qtyToAssembleToOrder": 0,
+                "lineNo": next_line_no,
+            }
+            next_line_no += 10000
+            for k in ("itemNo", "variantCode", "locationCode", "description",
+                     "quantity", "unitOfMeasureCode", "unitPrice", "lineDiscountPct"):
+                v = src.get(k)
+                if v not in (None, ""):
+                    payload[k] = v
+            try:
+                dest = self.create_quote_line(dest_no, payload)
+                created_pairs.append((src, dest))
+            except BusinessCentralError as e:
+                warnings.append(
+                    f"line item={src.get('itemNo','?')} lineNo={src.get('lineNo','?')}: {e}"
+                )
+
+        for src, dest in created_pairs:
+            src_ata = src.get("qtyToAssembleToOrder") or 0
+            if not src_ata or src_ata <= 0:
+                continue
+            try:
+                self.update_quote_line(
+                    dest["systemId"], {"qtyToAssembleToOrder": src_ata}
+                )
+            except BusinessCentralError as e:
+                warnings.append(
+                    f"PATCH ATA on dest line {dest.get('itemNo')}: {e}"
+                )
+                continue
+
+            src_ato = self.list_ato_lines_for_quote_line(source_no, src["lineNo"])
+            src_components = src_ato.get("lines") or []
+            if not src_components:
+                continue
+
+            dest_ato = self.list_ato_lines_for_quote_line(dest_no, dest["lineNo"])
+            asm_type = dest_ato.get("assemblyDocType")
+            asm_no = dest_ato.get("assemblyDocNo")
+            if not asm_type or not asm_no:
+                warnings.append(
+                    f"dest line {dest.get('itemNo')}: no assembly order created"
+                )
+                continue
+
+            # Wipe BOM defaults in parallel. delete_ato_line is independent per id.
+            defaults = dest_ato.get("lines") or []
+            if defaults:
+                def _delete(line_id: str) -> Exception | None:
+                    try:
+                        self.delete_ato_line(line_id)
+                        return None
+                    except Exception as e:
+                        try:
+                            self.update_ato_line(line_id, {"quantityPer": 0})
+                            return None
+                        except Exception as e2:
+                            return e2
+                with ThreadPoolExecutor(max_workers=8) as ex:
+                    list(ex.map(_delete, [d["systemId"] for d in defaults]))
+
+            # Pre-assign lineNos for the new components so we can POST them in
+            # parallel (BC defaults lineNo to 0, which collides on concurrent inserts).
+            comp_payloads: list[dict[str, Any]] = []
+            for idx, sl in enumerate(src_components):
+                comp_payloads.append({
+                    "itemNo": sl.get("itemNo"),
+                    "variantCode": sl.get("variantCode") or "",
+                    "locationCode": sl.get("locationCode") or "",
+                    "description": sl.get("description"),
+                    "quantityPer": sl.get("quantityPer"),
+                    "unitOfMeasureCode": sl.get("unitOfMeasureCode"),
+                    "lineType": sl.get("lineType") or "Item",
+                    "lineNo": (idx + 1) * 10000,
+                })
+
+            def _add(payload: dict[str, Any]) -> tuple[str | None, str | None]:
+                try:
+                    self.add_ato_line(asm_type, asm_no, payload)
+                    return (None, None)
+                except Exception as e:
+                    return (payload.get("itemNo"), str(e))
+
+            with ThreadPoolExecutor(max_workers=8) as ex:
+                for item_no, err in ex.map(_add, comp_payloads):
+                    if err:
+                        warnings.append(f"ATO component item={item_no}: {err}")
+                    else:
+                        ato_copied += 1
+
+        return {
+            "lines_copied": len(created_pairs),
+            "ato_lines_copied": ato_copied,
+            "warnings": warnings,
+        }
+
     def list_ato_lines_for_quote_line(
         self, quote_doc_no: str, line_no: int
     ) -> dict[str, Any]:
@@ -641,19 +978,42 @@ class BusinessCentralClient:
             raise BusinessCentralError("ATO line ops require live BC connection")
         token = self._get_token()
         url = self._nrv_url("assemblyLines")
+        # BC treats 'quantity' as read-only on both POST and PATCH for this endpoint —
+        # it is computed from quantityPer × parent sales line quantity. The writable
+        # field is 'quantityPer'. Sales quotes here all have parent qty=1, so a
+        # caller-supplied 'quantity' maps 1:1 to quantityPer.
+        incoming = dict(line)
+        if "quantityPer" not in incoming and "quantity" in incoming:
+            incoming["quantityPer"] = incoming["quantity"]
         payload = {
             "documentType": assembly_doc_type,
             "documentNo": assembly_doc_no,
             **{
                 k: v
-                for k, v in line.items()
+                for k, v in incoming.items()
                 if k in ("lineType", "itemNo", "variantCode", "locationCode",
-                         "description", "quantity", "quantityPer", "unitOfMeasureCode")
+                         "description", "quantityPer", "unitOfMeasureCode")
                 and v not in (None, "")
             },
         }
         if "itemNo" in payload and "lineType" not in payload:
             payload["lineType"] = "Item"
+        # NRV's assemblyLines POST does not auto-assign lineNo; without one BC
+        # defaults to 0 and fails on the second insert with
+        # Internal_EntityWithSameKeyExists. Mirror the salesQuoteLines fix.
+        # Hot-loop callers can supply 'lineNo' on `line` to skip the list call.
+        if incoming.get("lineNo"):
+            payload["lineNo"] = incoming["lineNo"]
+        else:
+            try:
+                existing = self._nrv_get(
+                    "assemblyLines",
+                    f"$filter=documentType eq '{assembly_doc_type}' and documentNo eq '{assembly_doc_no.replace(chr(39), chr(39) * 2)}'",
+                )
+                next_no = max((int(l.get("lineNo") or 0) for l in existing), default=0) + 10000
+                payload["lineNo"] = next_no
+            except BusinessCentralError:
+                payload["lineNo"] = 10000
         res = requests.post(
             url,
             headers={
@@ -674,6 +1034,13 @@ class BusinessCentralClient:
             raise BusinessCentralError("ATO line ops require live BC connection")
         token = self._get_token()
         url = self._nrv_url(f"assemblyLines({line_system_id})")
+        # BC's assemblyLines treats 'quantity' as read-only; quantityPer is the
+        # writable field. Translate so callers that send {quantity: N} still work.
+        body = dict(patch)
+        if "quantity" in body and "quantityPer" not in body:
+            body["quantityPer"] = body.pop("quantity")
+        else:
+            body.pop("quantity", None)
         res = requests.patch(
             url,
             headers={
@@ -681,7 +1048,7 @@ class BusinessCentralClient:
                 "Content-Type": "application/json",
                 "If-Match": "*",
             },
-            json=patch,
+            json=body,
             timeout=20,
         )
         if not res.ok:
@@ -695,12 +1062,19 @@ class BusinessCentralClient:
             return
         token = self._get_token()
         url = self._nrv_url(f"assemblyLines({line_system_id})")
+        logger.info("DELETE assembly line url=%s", url)
         res = requests.delete(
             url,
             headers={"Authorization": f"Bearer {token}", "If-Match": "*"},
             timeout=20,
         )
         if not res.ok:
+            logger.warning(
+                "DELETE assembly line failed status=%s body=%s url=%s",
+                res.status_code,
+                res.text[:1000],
+                url,
+            )
             raise BusinessCentralError(
                 f"DELETE assembly line failed: {res.status_code} {res.text[:300]}"
             )
@@ -895,6 +1269,57 @@ class BusinessCentralClient:
             customers = customers[:top]
         return customers
 
+    def get_customer_by_number(self, number: str) -> dict[str, Any] | None:
+        """Fetch a single customer (with NRV custom fields) by its number."""
+        if self.use_mock():
+            from . import _bc_mock
+            customers = _bc_mock.list_customers(q=number, top=1)
+            return customers[0] if customers else None
+        esc = number.replace("'", "''")
+        try:
+            rows = self._nrv_get("customers", f"$filter=number eq '{esc}'&$top=1")
+        except BusinessCentralError as e:
+            if "404" in str(e):
+                rows = self._get("customers", f"$filter=number eq '{esc}'&$top=1")
+            else:
+                raise
+        return rows[0] if rows else None
+
+    def update_customer(self, system_id: str, patch: dict[str, Any]) -> dict[str, Any]:
+        """PATCH a customer via the NRV custom endpoint. Falls back to standard
+        api/v2.0 if NRV returns 404 (older AL extension)."""
+        if self.use_mock():
+            raise BusinessCentralError("Customer edits require live BC connection")
+        token = self._get_token()
+        url = self._nrv_url(f"customers({system_id})")
+        res = requests.patch(
+            url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "If-Match": "*",
+            },
+            json=patch,
+            timeout=20,
+        )
+        if res.status_code == 404:
+            std_url = self._url(f"customers({system_id})")
+            res = requests.patch(
+                std_url,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                    "If-Match": "*",
+                },
+                json=patch,
+                timeout=20,
+            )
+        if not res.ok:
+            raise BusinessCentralError(
+                f"PATCH customer failed: {res.status_code} {res.text[:300]}"
+            )
+        return res.json() if res.text else {}
+
     def list_customer_templates(self) -> list[dict[str, Any]]:
         """Returns BC customer templates via the NRV custom API."""
         if self.use_mock():
@@ -976,7 +1401,91 @@ class BusinessCentralClient:
                     new_customer = rows[0]
             except Exception:
                 pass
+
+        tax_area = (payload.get("taxAreaCode") or "").strip()
+        payment_terms = (payload.get("paymentTermsCode") or "").strip()
+        location = (payload.get("locationCode") or "").strip()
+        tax_liable_raw = payload.get("taxLiable")
+        tax_liable_provided = tax_liable_raw is not None
+        tax_liable = bool(tax_liable_raw)
+        customer_system_id = new_customer.get("id") if new_customer else None
+        if customer_system_id and (
+            tax_area or payment_terms or location or tax_liable_provided
+        ):
+            try:
+                self._patch_customer_extras(
+                    customer_system_id,
+                    tax_area_code=tax_area,
+                    tax_liable=tax_liable,
+                    tax_liable_provided=tax_liable_provided,
+                    payment_terms_code=payment_terms,
+                    location_code=location,
+                    token=token,
+                )
+                try:
+                    term = created_no.replace("'", "''")
+                    rows = self._get("customers", f"$filter=number eq '{term}'&$top=1")
+                    if rows:
+                        new_customer = rows[0]
+                except Exception:
+                    pass
+            except BusinessCentralError as e:
+                logger.warning(
+                    "Customer %s created but customerTax PATCH failed (extension installed?): %s",
+                    created_no,
+                    e,
+                )
+
         return {"createdNo": created_no, "customer": new_customer}
+
+    def _patch_customer_extras(
+        self,
+        customer_system_id: str,
+        *,
+        tax_area_code: str = "",
+        tax_liable: bool = False,
+        tax_liable_provided: bool = False,
+        payment_terms_code: str = "",
+        location_code: str = "",
+        token: str | None = None,
+    ) -> None:
+        """PATCH the nrv-ops customerTax API page to set any combination of
+        Tax Liable, Tax Area Code, Payment Terms Code, and Location Code on
+        an existing Customer. Only non-empty / explicitly-provided fields are
+        included in the body so we never overwrite template defaults blindly.
+        """
+        body: dict[str, Any] = {}
+        if tax_liable_provided:
+            body["taxLiable"] = tax_liable
+        if tax_area_code:
+            body["taxAreaCode"] = tax_area_code
+        if payment_terms_code:
+            body["paymentTermsCode"] = payment_terms_code
+        if location_code:
+            body["locationCode"] = location_code
+        if not body:
+            return
+
+        if token is None:
+            token = self._get_token()
+        url = (
+            f"{self.BASE}/{self.tenant_id}/{self.environment}{self.NRV_OPS_API_ROUTE}"
+            f"/companies({self.company_id})/customerTax({customer_system_id})"
+        )
+        res = requests.patch(
+            url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "If-Match": "*",
+            },
+            json=body,
+            timeout=30,
+        )
+        if not res.ok:
+            raise BusinessCentralError(
+                f"customerTax PATCH failed: {res.status_code} {res.text[:300]}"
+            )
 
     def get_customer_price_groups(self) -> list[dict[str, Any]]:
         if self.use_mock():
@@ -1008,6 +1517,17 @@ class BusinessCentralClient:
 
         # 3. Customer price groups (NRV custom)
         groups = self._nrv_get("customerPriceGroups", "$orderby=code")
+
+        # 3b. SKU inventory rows for this item (NRV custom). One row per
+        #     (variant × location); sum across locations to get on-hand per variant.
+        sku_rows = self._nrv_get(
+            "skuInventory",
+            f"$filter=itemNo eq '{term}'",
+        )
+        inv_by_variant: dict[str, float] = {}
+        for s in sku_rows:
+            vc = s.get("variantCode") or ""
+            inv_by_variant[vc] = inv_by_variant.get(vc, 0.0) + float(s.get("inventory") or 0)
 
         # 4. Try MODERN Price List Line first (only populated if BC tenant has
         #    "New Sales Pricing Experience" enabled).
@@ -1063,6 +1583,7 @@ class BusinessCentralClient:
                 {
                     "code": vc,
                     "description": description,
+                    "inventory": inv_by_variant.get(vc) if vc in inv_by_variant else None,
                     "prices": row_prices,
                 }
             )
@@ -1077,6 +1598,207 @@ class BusinessCentralClient:
             "priceGroups": groups,
             "variants": variants_out,
         }
+
+
+    def list_variant_pricing_rows(
+        self, q: str = "", location: str = "", top: int = 2000
+    ) -> dict[str, Any]:
+        """Flat list of (item × variant × location) rows with prices across all
+        customer price groups. Mirrors the inventory page shape so users can see
+        per-location stock alongside the group prices.
+        Returns { priceGroups: [...], rows: [...], locations: [...] }.
+        """
+        if self.use_mock():
+            from . import _bc_mock
+            return _bc_mock.list_variant_pricing_rows(q=q, location=location, top=top)
+
+        # 1. SKU rows (item × variant × location) with descriptions already joined.
+        # Don't forward q to the SKU layer so variantDescription is also searchable;
+        # we re-apply the filter at row-build time.
+        skus = self.list_sku_inventory(q="", location=location, top=top)
+        if not skus:
+            return {"priceGroups": [], "rows": [], "locations": []}
+
+        # 2. Customer price groups (column headers).
+        groups = self._nrv_get("customerPriceGroups", "$orderby=code")
+
+        # 3. Prices for just the items in scope. Chunk OR-clauses to keep URLs sane.
+        unique_items = sorted({(s.get("itemNo") or "") for s in skus if s.get("itemNo")})
+        esc = lambda n: n.replace(chr(39), chr(39) + chr(39))
+        CHUNK = 80
+
+        def fetch_chunk(endpoint: str, has_status: bool, chunk: list[str]) -> list[dict[str, Any]]:
+            if not chunk:
+                return []
+            ors = " or ".join(f"itemNo eq '{esc(n)}'" for n in chunk)
+            filt = f"({ors})"
+            if has_status:
+                filt = f"{filt} and status eq 'Active'"
+            return self._nrv_get(endpoint, f"$filter={filt}")
+
+        prices: list[dict[str, Any]] = []
+        for i in range(0, len(unique_items), CHUNK):
+            prices.extend(fetch_chunk("itemPrices", True, unique_items[i : i + CHUNK]))
+        if not prices:
+            for i in range(0, len(unique_items), CHUNK):
+                prices.extend(fetch_chunk("salesPrices", False, unique_items[i : i + CHUNK]))
+
+        price_by_key: dict[tuple[str, str, str], dict[str, Any]] = {}
+        for p in prices:
+            key = (
+                p.get("itemNo") or "",
+                p.get("variantCode") or "",
+                p.get("customerPriceGroup") or "",
+            )
+            price_by_key[key] = p
+
+        # 4. Build rows — one per SKU (item × variant × location).
+        term = q.lower() if q else ""
+        out_rows: list[dict[str, Any]] = []
+        for s in skus:
+            item_no = s.get("itemNo") or ""
+            variant_code = s.get("variantCode") or ""
+            location_code = s.get("locationCode") or ""
+            item_desc = s.get("itemDescription") or ""
+            variant_desc = s.get("variantDescription") or ""
+            if term:
+                hay = " ".join(
+                    [
+                        item_no,
+                        item_desc,
+                        variant_code,
+                        variant_desc,
+                        location_code,
+                    ]
+                ).lower()
+                if term not in hay:
+                    continue
+            row_prices = []
+            for g in groups:
+                p = price_by_key.get((item_no, variant_code, g["code"]))
+                row_prices.append(
+                    {
+                        "groupCode": g["code"],
+                        "groupDescription": g.get("description") or g["code"],
+                        "unitPrice": float(p["unitPrice"]) if p else None,
+                        "currency": (p or {}).get("currencyCode") or "CAD",
+                    }
+                )
+            out_rows.append(
+                {
+                    "itemNo": item_no,
+                    "itemDescription": item_desc,
+                    "variantCode": variant_code,
+                    "variantDescription": variant_desc,
+                    "locationCode": location_code,
+                    "unitOfMeasure": s.get("unitOfMeasure") or "",
+                    "inventory": float(s.get("inventory") or 0) or None,
+                    "qtyOnSalesOrder": float(s.get("qtyOnSalesOrder") or 0),
+                    "prices": row_prices,
+                }
+            )
+
+        out_rows.sort(
+            key=lambda r: (r["itemNo"], r["variantCode"], r["locationCode"])
+        )
+        locations = sorted({r["locationCode"] for r in out_rows if r["locationCode"]})
+
+        return {"priceGroups": groups, "rows": out_rows, "locations": locations}
+
+
+    def get_component_prices(
+        self,
+        customer_number: str,
+        components: list[dict[str, str]],
+    ) -> dict[str, Any]:
+        """For a customer + a list of (itemNo, variantCode), returns the
+        customer's price group plus a unit price per component looked up from
+        itemPrices (modern) or salesPrices (legacy). Used by the ATO modal so
+        the user sees what each component would cost for the quote's customer.
+        Falls back from variant-specific price to base price if no variant row.
+        """
+        if self.use_mock():
+            from . import _bc_mock
+            return _bc_mock.get_component_prices(customer_number, components)
+
+        if not components:
+            return {"priceGroup": None, "currency": None, "prices": []}
+
+        term = customer_number.replace("'", "''")
+        try:
+            customers = self._nrv_get(
+                "customers", f"$filter=number eq '{term}'&$top=1"
+            )
+        except BusinessCentralError as e:
+            if "404" in str(e):
+                customers = self._get(
+                    "customers", f"$filter=number eq '{term}'&$top=1"
+                )
+            else:
+                raise
+
+        empty_prices = [
+            {
+                "itemNo": c.get("itemNo", ""),
+                "variantCode": c.get("variantCode", "") or "",
+                "unitPrice": None,
+            }
+            for c in components
+        ]
+        if not customers:
+            return {"priceGroup": None, "currency": None, "prices": empty_prices}
+        price_group = (customers[0].get("customerPriceGroup") or "").strip()
+        if not price_group:
+            return {"priceGroup": None, "currency": None, "prices": empty_prices}
+
+        unique_items = sorted({c.get("itemNo", "") for c in components if c.get("itemNo")})
+        if not unique_items:
+            return {"priceGroup": price_group, "currency": None, "prices": empty_prices}
+
+        # Match the established pattern from get_pricing_matrix: filter only by
+        # itemNo at the OData layer, then match customerPriceGroup in Python.
+        # The NRV AL extension's salesPrices entity does not reliably handle a
+        # combined `customerPriceGroup eq 'X' and (itemNo eq 'A' or itemNo eq 'B')`
+        # filter — returns 0 rows even when data exists.
+        item_clauses = " or ".join(
+            f"itemNo eq '{i.replace(chr(39), chr(39) * 2)}'" for i in unique_items
+        )
+        filter_expr = f"({item_clauses})"
+
+        prices = self._nrv_get(
+            "itemPrices", f"$filter={filter_expr} and status eq 'Active'"
+        )
+        if not prices:
+            prices = self._nrv_get("salesPrices", f"$filter={filter_expr}")
+
+        prices = [
+            p for p in prices if (p.get("customerPriceGroup") or "") == price_group
+        ]
+
+        by_key: dict[tuple[str, str], float] = {}
+        for p in prices:
+            key = (p.get("itemNo", ""), p.get("variantCode") or "")
+            if key in by_key:
+                continue
+            try:
+                by_key[key] = float(p["unitPrice"])
+            except (TypeError, ValueError, KeyError):
+                pass
+
+        currency = next(
+            (p.get("currencyCode") for p in prices if p.get("currencyCode")), None
+        )
+
+        out: list[dict[str, Any]] = []
+        for c in components:
+            item_no = c.get("itemNo", "")
+            variant = c.get("variantCode", "") or ""
+            unit = by_key.get((item_no, variant))
+            if unit is None and variant:
+                unit = by_key.get((item_no, ""))
+            out.append({"itemNo": item_no, "variantCode": variant, "unitPrice": unit})
+
+        return {"priceGroup": price_group, "currency": currency, "prices": out}
 
 
 def build_client_from_config(config) -> BusinessCentralClient:

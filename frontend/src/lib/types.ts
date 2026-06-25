@@ -77,21 +77,26 @@ export type PingResult = {
 };
 
 export type BcCustomer = {
-    id: string;
+    id?: string;
+    systemId?: string;
     number: string;
     displayName: string;
     phoneNumber?: string;
     email?: string;
+    contactName?: string;
     addressLine1?: string;
     addressLine2?: string;
     city?: string;
     state?: string;
     country?: string;
+    countryRegionCode?: string;
     postalCode?: string;
     currencyCode?: string;
     paymentTermsId?: string;
+    paymentTermsCode?: string;
     customerPriceGroup?: string;
     salesperson?: string;
+    salespersonCode?: string;
     custCategory?: string;
     businessType?: string;
     blocked?: string;
@@ -146,6 +151,29 @@ export type BcDimensionValue = {
     blocked?: boolean;
 };
 
+export type BcComponentPriceResponse = {
+    priceGroup: string | null;
+    currency: string | null;
+    prices: Array<{
+        itemNo: string;
+        variantCode: string;
+        unitPrice: number | null;
+    }>;
+};
+
+export type BcPaymentTerm = {
+    id?: string;
+    code: string;
+    displayName?: string;
+    dueDateCalculation?: string;
+};
+
+export type BcLocation = {
+    id?: string;
+    code: string;
+    displayName?: string;
+};
+
 export type BcCustomerTemplate = {
     systemId: string;
     code: string;
@@ -178,6 +206,7 @@ export type BcSalesQuote = {
     externalDocumentNumber?: string;
     shortcutDimension1Code?: string;
     lastModifiedDateTime?: string;
+    createdBy?: string | null;
 };
 
 export type BcSalesOrder = {
@@ -236,6 +265,24 @@ export type VariantPrice = {
     currency: string;
 };
 
+export type VariantPricingRow = {
+    itemNo: string;
+    itemDescription: string;
+    variantCode: string;
+    variantDescription: string;
+    locationCode: string;
+    unitOfMeasure: string;
+    inventory: number | null;
+    qtyOnSalesOrder: number;
+    prices: VariantPrice[];
+};
+
+export type VariantPricingResponse = {
+    priceGroups: CustomerPriceGroup[];
+    rows: VariantPricingRow[];
+    locations: string[];
+};
+
 export type PricingMatrix = {
     item: {
         id: string | null;
@@ -247,6 +294,7 @@ export type PricingMatrix = {
     variants: Array<{
         code: string;
         description: string;
+        inventory: number | null;
         prices: VariantPrice[];
     }>;
 };

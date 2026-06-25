@@ -4,22 +4,20 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
     const quoteNo = event.params.id;
-    // Find the quote by number (the id route param is the quote number from the listing)
-    const [quotesRes, linesRes] = await Promise.all([
-        callBackend<BcSalesQuote[]>(
+    const [headerRes, linesRes] = await Promise.all([
+        callBackend<BcSalesQuote>(
             event,
-            `/api/bc/sales-quotes?q=${encodeURIComponent(quoteNo)}&top=1`
+            `/api/bc/sales-quotes/${encodeURIComponent(quoteNo)}/header`
         ),
         callBackend<BcQuoteLine[]>(
             event,
             `/api/bc/sales-quotes/${encodeURIComponent(quoteNo)}/lines`
         )
     ]);
-    const quote = (quotesRes.data ?? []).find((q) => q.number === quoteNo) ?? null;
     return {
         quoteNo,
-        quote,
+        quote: headerRes.data ?? null,
         lines: linesRes.data ?? [],
-        error: quotesRes.error || linesRes.error
+        error: headerRes.error || linesRes.error
     };
 };

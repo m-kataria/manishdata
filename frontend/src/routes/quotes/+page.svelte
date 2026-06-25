@@ -54,9 +54,18 @@
     }
 
     $: totalValue = data.quotes.reduce((sum, q) => sum + (q.totalAmountIncludingTax || 0), 0);
+
+    let sortDir: 'asc' | 'desc' = 'asc';
+    function toggleSort() {
+        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    }
+    $: sortedQuotes = [...data.quotes].sort((a, b) => {
+        const cmp = (a.number || '').localeCompare(b.number || '', undefined, { numeric: true });
+        return sortDir === 'asc' ? cmp : -cmp;
+    });
 </script>
 
-<div class="px-8 py-8 max-w-[1480px]">
+<div class="px-8 py-8 mx-auto max-w-[1480px]">
     <div class="mb-8 flex items-end justify-between gap-6 flex-wrap">
         <div>
             <p class="eyebrow mb-1">Commercial</p>
@@ -133,19 +142,28 @@
                 <table class="nrv-table">
                     <thead>
                         <tr>
-                            <th>Quote #</th>
+                            <th class="whitespace-nowrap">
+                                <button
+                                    type="button"
+                                    on:click={toggleSort}
+                                    class="inline-flex items-center gap-1 hover:text-primary-container"
+                                >
+                                    Quote #
+                                    <span class="text-xs">{sortDir === 'asc' ? '▲' : '▼'}</span>
+                                </button>
+                            </th>
                             <th>Customer</th>
                             <th>Salesperson</th>
+                            <th>Created By</th>
                             <th>Group</th>
                             <th>Doc Date</th>
                             <th>Valid Until</th>
                             <th class="text-right">Total (incl. tax)</th>
-                            <th>Status</th>
                             <th class="text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {#each data.quotes as q}
+                        {#each sortedQuotes as q}
                             <tr>
                                 <td class="font-medium text-primary-container whitespace-nowrap">
                                     <a href={`/quotes/${encodeURIComponent(q.number)}/edit`} class="hover:underline">
@@ -157,6 +175,7 @@
                                     <div class="font-label-sm text-xs text-secondary mt-0.5">#{q.customerNumber}</div>
                                 </td>
                                 <td class="muted whitespace-nowrap">{q.salesperson || '—'}</td>
+                                <td class="muted whitespace-nowrap">{q.createdBy || '—'}</td>
                                 <td class="whitespace-nowrap">
                                     {#if q.shortcutDimension1Code}
                                         <span class="badge-pending">{q.shortcutDimension1Code}</span>
@@ -169,7 +188,6 @@
                                 <td class="text-right tabular-nums whitespace-nowrap font-medium">
                                     {fmtMoney(q.totalAmountIncludingTax, q.currencyCode)}
                                 </td>
-                                <td><span class={quoteBadge(q.status)}>{q.status}</span></td>
                                 <td class="text-right whitespace-nowrap">
                                     <button
                                         on:click={() => downloadPdf(q.id, q.number)}

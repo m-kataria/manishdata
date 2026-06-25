@@ -4,7 +4,7 @@
     export let data: PageData;
 </script>
 
-<div class="px-8 py-8 max-w-[1480px]">
+<div class="px-8 py-8 mx-auto max-w-[1480px]">
     <div class="mb-8 flex items-end justify-between gap-6 flex-wrap">
         <div>
             <p class="eyebrow mb-1">Sales</p>
@@ -66,12 +66,20 @@
                             <th>Phone</th>
                             <th>Price Group</th>
                             <th>Currency</th>
+                            <th class="text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {#each data.customers as c}
                             <tr>
-                                <td class="font-medium text-primary-container whitespace-nowrap">{c.number}</td>
+                                <td class="font-medium text-primary-container whitespace-nowrap">
+                                    <a
+                                        href={`/customers/${encodeURIComponent(c.number)}/edit`}
+                                        class="hover:underline"
+                                    >
+                                        {c.number}
+                                    </a>
+                                </td>
                                 <td class="font-medium">{c.displayName || '—'}</td>
                                 <td class="muted">{c.city || '—'}</td>
                                 <td class="whitespace-nowrap">
@@ -91,6 +99,14 @@
                                     {:else}<span class="muted">—</span>{/if}
                                 </td>
                                 <td class="muted whitespace-nowrap">{c.currencyCode || '—'}</td>
+                                <td class="text-right whitespace-nowrap">
+                                    <a
+                                        href={`/customers/${encodeURIComponent(c.number)}/edit`}
+                                        class="btn-outline !py-1.5 !px-4 !text-xs"
+                                    >
+                                        ✎ Edit
+                                    </a>
+                                </td>
                             </tr>
                         {/each}
                     </tbody>

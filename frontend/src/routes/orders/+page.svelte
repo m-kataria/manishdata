@@ -54,9 +54,18 @@
     }
 
     $: totalValue = data.orders.reduce((sum, o) => sum + (o.totalAmountIncludingTax || 0), 0);
+
+    let sortDir: 'asc' | 'desc' = 'asc';
+    function toggleSort() {
+        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    }
+    $: sortedOrders = [...data.orders].sort((a, b) => {
+        const cmp = (a.number || '').localeCompare(b.number || '', undefined, { numeric: true });
+        return sortDir === 'asc' ? cmp : -cmp;
+    });
 </script>
 
-<div class="px-8 py-8 max-w-[1480px]">
+<div class="px-8 py-8 mx-auto max-w-[1480px]">
     <div class="mb-8 flex items-end justify-between gap-6 flex-wrap">
         <div>
             <p class="eyebrow mb-1">Fulfillment</p>
@@ -133,19 +142,27 @@
                 <table class="nrv-table">
                     <thead>
                         <tr>
-                            <th>Order #</th>
+                            <th class="whitespace-nowrap">
+                                <button
+                                    type="button"
+                                    on:click={toggleSort}
+                                    class="inline-flex items-center gap-1 hover:text-primary-container"
+                                >
+                                    Order #
+                                    <span class="text-xs">{sortDir === 'asc' ? '▲' : '▼'}</span>
+                                </button>
+                            </th>
                             <th>Customer</th>
                             <th>Salesperson</th>
                             <th>Group</th>
                             <th>Order Date</th>
                             <th>Requested Delivery</th>
                             <th class="text-right">Total (incl. tax)</th>
-                            <th>Status</th>
                             <th class="text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {#each data.orders as o}
+                        {#each sortedOrders as o}
                             <tr>
                                 <td class="font-medium text-primary-container whitespace-nowrap">
                                     {o.number}
@@ -167,7 +184,6 @@
                                 <td class="text-right tabular-nums whitespace-nowrap font-medium">
                                     {fmtMoney(o.totalAmountIncludingTax, o.currencyCode)}
                                 </td>
-                                <td><span class={orderBadge(o.status)}>{o.status}</span></td>
                                 <td class="text-right whitespace-nowrap">
                                     <button
                                         on:click={() => downloadPdf(o.id, o.number)}
