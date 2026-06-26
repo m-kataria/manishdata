@@ -221,6 +221,16 @@
                 </button>
             </div>
 
+            <form method="POST" action="/login?/logout" class="px-3 pt-3">
+                <button
+                    type="submit"
+                    class="w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-sm transition-colors border border-rose-200"
+                >
+                    <span class="material-symbols-outlined" style="font-size: 20px">logout</span>
+                    <span>Sign out</span>
+                </button>
+            </form>
+
             <nav class="flex-1 px-3 py-5 flex flex-col gap-1">
                 {#each nav as item (item.href)}
                     {@const active = item.href === '/' ? path === '/' : path.startsWith(item.href)}
@@ -283,9 +293,6 @@
                     <div class="font-label-sm text-xs text-secondary">
                         {data.user?.isAdmin ? 'Administrator' : 'Operator'}
                     </div>
-                    <form method="POST" action="/login?/logout" class="mt-2">
-                        <button class="btn-ghost">Sign out</button>
-                    </form>
                 </div>
             </div>
         </aside>
