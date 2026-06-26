@@ -13,28 +13,36 @@ from app.models import User
 from app.models.user import ROLE_ADMIN, ROLE_SUPERADMIN
 
 
-def _ensure_role_column() -> None:
-    """Adds users.role to existing databases that predate the role-based perms."""
+def _ensure_users_columns() -> None:
+    """Backfills new users columns (role, is_active) on legacy databases."""
     inspector = inspect(db.engine)
     if "users" not in inspector.get_table_names():
         return
     cols = {c["name"] for c in inspector.get_columns("users")}
-    if "role" in cols:
-        return
+
     with db.engine.begin() as conn:
-        conn.execute(
-            text(
-                f"ALTER TABLE users ADD COLUMN role VARCHAR(20) NOT NULL "
-                f"DEFAULT '{ROLE_ADMIN}'"
+        if "role" not in cols:
+            conn.execute(
+                text(
+                    f"ALTER TABLE users ADD COLUMN role VARCHAR(20) NOT NULL "
+                    f"DEFAULT '{ROLE_ADMIN}'"
+                )
             )
-        )
-    print("Added 'role' column to users (default 'admin').")
+            print("Added 'role' column to users (default 'admin').")
+        if "is_active" not in cols:
+            conn.execute(
+                text(
+                    "ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL "
+                    "DEFAULT TRUE"
+                )
+            )
+            print("Added 'is_active' column to users (default TRUE).")
 
 
 def main() -> None:
     app = create_app()
     with app.app_context():
-        _ensure_role_column()
+        _ensure_users_columns()
         db.create_all()
 
         admin_username = app.config["INITIAL_ADMIN_USERNAME"]

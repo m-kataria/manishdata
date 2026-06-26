@@ -22,13 +22,16 @@ def create_app(config_class: type[Config] = Config) -> Flask:
 
     @login_manager.user_loader
     def load_user(user_id: str) -> User | None:
-        return db.session.get(User, int(user_id))
+        user = db.session.get(User, int(user_id))
+        if user is None or not user.is_active:
+            return None
+        return user
 
     @login_manager.unauthorized_handler
     def unauthorized():
         return jsonify({"error": "unauthorized"}), 401
 
-    from .routes import auth, bc, integrations, inventory, jobs, quotes, sf
+    from .routes import auth, bc, integrations, inventory, jobs, quotes, sf, users
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(jobs.bp)
@@ -37,6 +40,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     app.register_blueprint(bc.bp)
     app.register_blueprint(sf.bp)
     app.register_blueprint(integrations.bp)
+    app.register_blueprint(users.bp)
 
     @app.route("/api/health")
     def health():

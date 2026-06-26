@@ -6,6 +6,8 @@ export type User = {
     displayName: string | null;
     isAdmin: boolean;
     role: UserRole;
+    isActive: boolean;
+    createdAt: string | null;
 };
 
 export type Job = {

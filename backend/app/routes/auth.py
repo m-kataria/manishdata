@@ -19,6 +19,8 @@ def login():
     user = db.session.query(User).filter_by(username=username).first()
     if user is None or not user.check_password(password):
         return jsonify({"error": "invalid credentials"}), 401
+    if not user.is_active:
+        return jsonify({"error": "account disabled"}), 403
 
     login_user(user, remember=True)
     return jsonify(user.to_dict())

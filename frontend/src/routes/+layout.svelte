@@ -38,7 +38,8 @@
         applyTheme();
     }
 
-    const nav = [
+    type NavItem = { href: string; label: string };
+    const baseNav: NavItem[] = [
         { href: '/', label: 'Overview' },
         { href: '/customers', label: 'Customers' },
         { href: '/quotes', label: 'Quotes' },
@@ -49,6 +50,9 @@
         { href: '/pricing', label: 'Pricing' },
         { href: '/settings/integrations', label: 'Integrations' }
     ];
+    $: nav = data.user?.role === 'superadmin'
+        ? [...baseNav, { href: '/users', label: 'Users' }]
+        : baseNav;
 
     $: bcOnline =
         !!data.integrations?.businessCentral.configured &&
@@ -291,7 +295,7 @@
                         {data.user?.displayName ?? data.user?.username ?? '—'}
                     </div>
                     <div class="font-label-sm text-xs text-secondary">
-                        {data.user?.isAdmin ? 'Administrator' : 'Operator'}
+                        {data.user?.role === 'superadmin' ? 'Superadmin' : 'Administrator'}
                     </div>
                 </div>
             </div>

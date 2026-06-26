@@ -23,6 +23,9 @@ class User(UserMixin, db.Model):
     role: Mapped[str] = mapped_column(
         String(20), nullable=False, default=ROLE_ADMIN, server_default=ROLE_ADMIN
     )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="1"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -44,4 +47,6 @@ class User(UserMixin, db.Model):
             "displayName": self.display_name,
             "isAdmin": self.is_admin,
             "role": self.role,
+            "isActive": self.is_active,
+            "createdAt": self.created_at.isoformat() if self.created_at else None,
         }

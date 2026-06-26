@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from functools import wraps
 
 from flask import Blueprint, current_app, jsonify, request
 from flask_login import login_required
@@ -12,23 +11,13 @@ from ..models.quote_owner import QuoteOwner
 from ..models.sync_log import SyncLog
 from ..models.user import User
 from ..services.business_central import BusinessCentralError, build_client_from_config
+from ..utils.auth_decorators import superadmin_required
 
 bp = Blueprint("bc", __name__, url_prefix="/api/bc")
 
 
 def _client():
     return build_client_from_config(current_app.config)
-
-
-def superadmin_required(view):
-    @wraps(view)
-    @login_required
-    def wrapped(*args, **kwargs):
-        if not current_user.is_superadmin:
-            return jsonify({"error": "forbidden", "reason": "superadmin_required"}), 403
-        return view(*args, **kwargs)
-
-    return wrapped
 
 
 @bp.get("/customers")
