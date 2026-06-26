@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from functools import wraps
 
 from flask import Blueprint, current_app, jsonify, request
 from flask_login import login_required
@@ -17,6 +18,17 @@ bp = Blueprint("bc", __name__, url_prefix="/api/bc")
 
 def _client():
     return build_client_from_config(current_app.config)
+
+
+def superadmin_required(view):
+    @wraps(view)
+    @login_required
+    def wrapped(*args, **kwargs):
+        if not current_user.is_superadmin:
+            return jsonify({"error": "forbidden", "reason": "superadmin_required"}), 403
+        return view(*args, **kwargs)
+
+    return wrapped
 
 
 @bp.get("/customers")
@@ -268,7 +280,7 @@ def patch_quote_line(line_id: str):
 
 
 @bp.delete("/quote-lines/<line_id>")
-@login_required
+@superadmin_required
 def delete_quote_line(line_id: str):
     try:
         _client().delete_quote_line(line_id)
@@ -311,7 +323,7 @@ def patch_ato_line(line_id: str):
 
 
 @bp.delete("/ato-lines/<line_id>")
-@login_required
+@superadmin_required
 def delete_ato_line_route(line_id: str):
     try:
         _client().delete_ato_line(line_id)

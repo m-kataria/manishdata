@@ -1,8 +1,11 @@
+export type UserRole = 'superadmin' | 'admin';
+
 export type User = {
     id: number;
     username: string;
     displayName: string | null;
     isAdmin: boolean;
+    role: UserRole;
 };
 
 export type Job = {

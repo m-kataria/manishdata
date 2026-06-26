@@ -1,5 +1,6 @@
 <script lang="ts">
     import { invalidateAll } from '$app/navigation';
+    import { page } from '$app/stores';
     import LoadingBar from '$lib/components/LoadingBar.svelte';
     import type {
         BcAssemblyLine,
@@ -12,6 +13,8 @@
     import type { PageData } from './$types';
 
     export let data: PageData;
+
+    $: canDelete = $page.data.user?.role === 'superadmin';
 
     function fmtMoney(n: number | undefined, cur: string | undefined): string {
         if (n === null || n === undefined) return '—';
@@ -807,7 +810,7 @@
                 · total {fmtMoney(linesTotal, data.quote?.currencyCode)}
             </p>
             <div class="flex items-center gap-3">
-                {#if selectedLines.size > 0}
+                {#if canDelete && selectedLines.size > 0}
                     <button
                         on:click={deleteSelectedLines}
                         disabled={busy}
@@ -922,13 +925,15 @@
                                             ⚙ ATO
                                         </button>
                                     {/if}
-                                    <button
-                                        on:click={() => deleteLine(line)}
-                                        class="btn-danger !py-1 !px-3 !text-xs"
-                                        disabled={busy}
-                                    >
-                                        ×
-                                    </button>
+                                    {#if canDelete}
+                                        <button
+                                            on:click={() => deleteLine(line)}
+                                            class="btn-danger !py-1 !px-3 !text-xs"
+                                            disabled={busy}
+                                        >
+                                            ×
+                                        </button>
+                                    {/if}
                                 </td>
                             </tr>
                         {/each}
@@ -1060,7 +1065,7 @@
                         </p>
                     </div>
                 {:else}
-                    {#if selectedAtoLines.size > 0}
+                    {#if canDelete && selectedAtoLines.size > 0}
                         <div class="px-6 py-2 border-b border-zinc-200 bg-surface-container-low flex items-center justify-end">
                             <button
                                 on:click={deleteSelectedAtoLines}
@@ -1155,12 +1160,14 @@
                                             {fmtMoney(atoLineTotal(line) ?? undefined, atoPrices?.currency || data.quote?.currencyCode)}
                                         </td>
                                         <td class="text-right">
-                                            <button
-                                                on:click={() => deleteAtoLine(line)}
-                                                class="btn-danger !py-1 !px-3 !text-xs"
-                                            >
-                                                ×
-                                            </button>
+                                            {#if canDelete}
+                                                <button
+                                                    on:click={() => deleteAtoLine(line)}
+                                                    class="btn-danger !py-1 !px-3 !text-xs"
+                                                >
+                                                    ×
+                                                </button>
+                                            {/if}
                                         </td>
                                     </tr>
                                 {/each}
