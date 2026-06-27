@@ -39,20 +39,14 @@
     }
 
     type NavItem = { href: string; label: string };
+    // The top app bar already covers Home / Customers / Quotes / Orders / Inventory /
+    // Pricing / Jobs / Help — the sidebar is reserved for settings + utility links.
     const baseNav: NavItem[] = [
-        { href: '/', label: 'Overview' },
-        { href: '/customers', label: 'Customers' },
-        { href: '/quotes', label: 'Quotes' },
-        { href: '/orders', label: 'Orders' },
-        { href: '/jobs', label: 'Jobs' },
-        { href: '/help', label: 'Help' },
-        { href: '/inventory', label: 'Inventory' },
-        { href: '/pricing', label: 'Pricing' },
         { href: '/settings/integrations', label: 'Integrations' },
-        { href: '/support', label: 'Support' }
+        { href: '/support', label: 'Contact Support' }
     ];
     $: nav = data.user?.role === 'superadmin'
-        ? [...baseNav, { href: '/users', label: 'Users' }]
+        ? [{ href: '/users', label: 'Users' }, ...baseNav]
         : baseNav;
 
     $: bcOnline =
