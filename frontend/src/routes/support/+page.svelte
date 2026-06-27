@@ -17,10 +17,10 @@
             </div>
             <div>
                 <a
-                    href="mailto:manish@nervalcorp.com"
+                    href="mailto:it@nervalcorp.com"
                     class="font-body-md text-on-surface hover:text-primary-container underline decoration-zinc-300 hover:decoration-primary-container"
                 >
-                    manish@nervalcorp.com
+                    it@nervalcorp.com
                 </a>
             </div>
 
@@ -28,6 +28,9 @@
                 Phone
             </div>
             <div>
+                <p class="font-body-md text-sm text-secondary mb-0.5">
+                    Contact <span class="text-on-surface font-medium">Manish</span> at:
+                </p>
                 <a
                     href="tel:+17804521111,172"
                     class="font-body-md text-on-surface hover:text-primary-container underline decoration-zinc-300 hover:decoration-primary-container"
