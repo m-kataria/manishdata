@@ -41,13 +41,12 @@
     type NavItem = { href: string; label: string };
     // The top app bar already covers Home / Customers / Quotes / Orders / Inventory /
     // Pricing / Jobs / Help — the sidebar is reserved for settings + utility links.
-    const baseNav: NavItem[] = [
-        { href: '/settings/integrations', label: 'Integrations' },
-        { href: '/support', label: 'Contact Support' }
-    ];
-    $: nav = data.user?.role === 'superadmin'
-        ? [{ href: '/users', label: 'Users' }, ...baseNav]
-        : baseNav;
+    // Integrations sits at the bottom of the list as a less-frequently-touched item.
+    $: nav = [
+        ...(data.user?.role === 'superadmin' ? [{ href: '/users', label: 'Users' }] : []),
+        { href: '/support', label: 'Contact Support' },
+        { href: '/settings/integrations', label: 'Integrations' }
+    ] satisfies NavItem[];
 
     $: bcOnline =
         !!data.integrations?.businessCentral.configured &&
@@ -220,15 +219,24 @@
                 </button>
             </div>
 
-            <form method="POST" action="/login?/logout" class="px-3 pt-3">
-                <button
-                    type="submit"
-                    class="w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-sm transition-colors border border-rose-200"
+            <div class="px-3 pt-3 flex flex-col gap-2">
+                <form method="POST" action="/login?/logout">
+                    <button
+                        type="submit"
+                        class="w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-sm transition-colors border border-rose-200"
+                    >
+                        <span class="material-symbols-outlined" style="font-size: 20px">logout</span>
+                        <span>Sign out</span>
+                    </button>
+                </form>
+                <a
+                    href="/change-password"
+                    class="w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-md bg-surface-container-low hover:bg-surface-container-high text-on-surface font-semibold text-sm transition-colors border border-zinc-200"
                 >
-                    <span class="material-symbols-outlined" style="font-size: 20px">logout</span>
-                    <span>Sign out</span>
-                </button>
-            </form>
+                    <span class="material-symbols-outlined" style="font-size: 20px">key</span>
+                    <span>Change password</span>
+                </a>
+            </div>
 
             <nav class="flex-1 px-3 py-5 flex flex-col gap-1">
                 {#each nav as item (item.href)}

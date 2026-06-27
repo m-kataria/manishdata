@@ -38,3 +38,24 @@ def me():
     if not current_user.is_authenticated:
         return jsonify({"error": "unauthorized"}), 401
     return jsonify(current_user.to_dict())
+
+
+@bp.post("/change-password")
+@login_required
+def change_password():
+    data = request.get_json(silent=True) or {}
+    current = data.get("currentPassword") or ""
+    new = data.get("newPassword") or ""
+
+    if not current or not new:
+        return jsonify({"error": "current and new password required"}), 400
+    if len(new) < 8:
+        return jsonify({"error": "new password must be at least 8 characters"}), 400
+    if not current_user.check_password(current):
+        return jsonify({"error": "current password is incorrect"}), 401
+    if current == new:
+        return jsonify({"error": "new password must be different"}), 400
+
+    current_user.set_password(new)
+    db.session.commit()
+    return jsonify({"ok": True})
