@@ -26,6 +26,99 @@
     let newReportsTo = '';
     let newMfaEnabled = false;
 
+    // ── Password reset modal state ──────────────────────────────────────────
+    // pwModalUser: the user we're resetting (null = modal closed)
+    // pwInput: the password the superadmin is about to set
+    // pwShow: whether to render pwInput as plain text in the input
+    // pwSavedFor: once set is committed, holds the password just set — shown
+    //   to the superadmin until they hit Close, then wiped. After Close the
+    //   value is unrecoverable; only another reset reveals a fresh password.
+    let pwModalUser: User | null = null;
+    let pwInput = '';
+    let pwShow = false;
+    let pwSavedFor: string | null = null;
+    let pwError = '';
+
+    // Dinopass-style: {Adjective}{symbol}{Animal}{NN}, e.g. "Mild(Cheetah42".
+    const PW_ADJECTIVES = [
+        'Mild', 'Wild', 'Brave', 'Clever', 'Quick', 'Sneaky', 'Happy', 'Bold',
+        'Fierce', 'Calm', 'Sleek', 'Jolly', 'Dusty', 'Lucky', 'Witty', 'Snappy',
+        'Sunny', 'Frosty', 'Smooth', 'Spicy'
+    ];
+    const PW_ANIMALS = [
+        'Tiger', 'Cheetah', 'Wolf', 'Bear', 'Fox', 'Lion', 'Hawk', 'Otter',
+        'Lynx', 'Panda', 'Eagle', 'Falcon', 'Puma', 'Jaguar', 'Mouse', 'Shark',
+        'Owl', 'Badger', 'Heron', 'Moose'
+    ];
+    const PW_SYMBOLS = ['!', '@', '#', '$', '%', '&', '*', '('];
+
+    function pick<T>(arr: T[]): T {
+        return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function generatePassword(): string {
+        const num = Math.floor(Math.random() * 90) + 10;
+        return `${pick(PW_ADJECTIVES)}${pick(PW_SYMBOLS)}${pick(PW_ANIMALS)}${num}`;
+    }
+
+    function openPwModal(user: User) {
+        pwModalUser = user;
+        pwInput = generatePassword();
+        pwShow = false;
+        pwSavedFor = null;
+        pwError = '';
+    }
+
+    function closePwModal() {
+        pwModalUser = null;
+        pwInput = '';
+        pwShow = false;
+        pwSavedFor = null;
+        pwError = '';
+    }
+
+    function regenerate() {
+        pwInput = generatePassword();
+    }
+
+    async function commitPasswordReset() {
+        if (!pwModalUser) return;
+        pwError = '';
+        if (pwInput.length < 8) {
+            pwError = 'Password must be at least 8 characters.';
+            return;
+        }
+        busy = true;
+        try {
+            const res = await fetch(`/api/users/${pwModalUser.id}`, {
+                method: 'PATCH',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ password: pwInput })
+            });
+            if (!res.ok) {
+                const j = await res.json().catch(() => ({}));
+                pwError = j.error ?? `Failed (${res.status})`;
+                return;
+            }
+            pwSavedFor = pwInput;
+            pwInput = '';
+        } finally {
+            busy = false;
+        }
+    }
+
+    async function copyToClipboard(value: string) {
+        try {
+            await navigator.clipboard.writeText(value);
+        } catch {
+            /* clipboard API blocked — user can select manually */
+        }
+    }
+
+    function setPwInput(e: Event) {
+        pwInput = (e.currentTarget as HTMLInputElement).value;
+    }
+
     async function createUser() {
         formError = '';
         if (!newUsername.trim() || !newPassword) {
@@ -304,6 +397,7 @@
                         <th>Role</th>
                         <th>Reports to</th>
                         <th class="text-center">2FA</th>
+                        <th>Password</th>
                         <th>Created</th>
                         <th class="text-right">Actions</th>
                     </tr>
@@ -375,10 +469,26 @@
                                     title={!u.email ? 'Set an email first' : 'Email code on login'}
                                 />
                             </td>
+                            <td>
+                                <span
+                                    class="font-mono text-secondary tracking-widest select-none"
+                                    title="Passwords are hashed and cannot be revealed. Use Change password to set a new one."
+                                >
+                                    ••••••••
+                                </span>
+                            </td>
                             <td class="text-secondary text-xs">
                                 {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
                             </td>
-                            <td class="text-right">
+                            <td class="text-right whitespace-nowrap">
+                                <button
+                                    on:click={() => openPwModal(u)}
+                                    class="btn-outline !py-1 !px-3 !text-xs mr-1"
+                                    disabled={busy}
+                                    title="Reset this user's password"
+                                >
+                                    Change password
+                                </button>
                                 <button
                                     on:click={() => deleteUser(u)}
                                     class="btn-danger !py-1 !px-3 !text-xs"
@@ -395,3 +505,129 @@
         </div>
     </section>
 </div>
+
+<!-- ── Change-password modal ───────────────────────────────────────────── -->
+{#if pwModalUser}
+    <div class="fixed inset-0 z-50 bg-zinc-900/40 flex items-center justify-center p-4">
+        <div class="bg-white rounded-card shadow-2xl max-w-md w-full">
+            <div class="px-6 py-4 border-b border-zinc-200 flex items-center justify-between">
+                <div>
+                    <p class="eyebrow">{pwSavedFor ? 'Done' : 'Reset password'}</p>
+                    <p class="font-h3 text-base text-on-surface font-semibold mt-0.5">
+                        {pwModalUser.username}
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    on:click={closePwModal}
+                    aria-label="Close"
+                    class="inline-flex items-center justify-center h-9 w-9 rounded-full text-on-surface hover:bg-surface-container-high"
+                >
+                    <span class="material-symbols-outlined" style="font-size: 22px">close</span>
+                </button>
+            </div>
+
+            {#if pwSavedFor}
+                <!-- ── Success state: show password once, then it's gone ─── -->
+                <div class="px-6 py-5">
+                    <p class="font-body-md text-sm text-on-surface mb-3">
+                        Password set. Copy it now and share it with the user via a
+                        secure channel — once you close this window, it can't be
+                        revealed again.
+                    </p>
+                    <div class="flex gap-2 items-stretch">
+                        <code
+                            class="flex-1 font-mono text-base bg-surface-container-low border border-zinc-300 rounded-md px-3 py-2 text-on-surface select-all break-all"
+                        >
+                            {pwSavedFor}
+                        </code>
+                        <button
+                            type="button"
+                            on:click={() => copyToClipboard(pwSavedFor ?? '')}
+                            class="btn-primary px-4 text-sm"
+                            title="Copy to clipboard"
+                        >
+                            Copy
+                        </button>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-zinc-100 flex justify-end gap-3">
+                    <button type="button" on:click={closePwModal} class="btn-primary px-6">
+                        Close
+                    </button>
+                </div>
+            {:else}
+                <!-- ── Edit state: generate or override, then Reset ─────── -->
+                <div class="px-6 py-5">
+                    <p class="font-body-md text-sm text-secondary mb-4">
+                        Generate a memorable animal-style password, or type your own
+                        override. The user can change it later from their account
+                        page.
+                    </p>
+
+                    <label class="field-label" for="pw-input">New password</label>
+                    <div class="relative mt-1">
+                        <input
+                            id="pw-input"
+                            type={pwShow ? 'text' : 'password'}
+                            value={pwInput}
+                            on:input={setPwInput}
+                            class="field !pr-20 w-full font-mono"
+                            autocomplete="new-password"
+                            spellcheck="false"
+                        />
+                        <div class="absolute inset-y-0 right-0 flex items-center">
+                            <button
+                                type="button"
+                                on:click={() => (pwShow = !pwShow)}
+                                aria-label={pwShow ? 'Hide password' : 'Show password'}
+                                title={pwShow ? 'Hide password' : 'Show password'}
+                                class="px-2 flex items-center text-secondary hover:text-on-surface"
+                            >
+                                <span class="material-symbols-outlined" style="font-size: 20px">
+                                    {pwShow ? 'visibility_off' : 'visibility'}
+                                </span>
+                            </button>
+                            <button
+                                type="button"
+                                on:click={regenerate}
+                                aria-label="Regenerate"
+                                title="Generate a new password"
+                                class="px-2 flex items-center text-secondary hover:text-on-surface"
+                            >
+                                <span class="material-symbols-outlined" style="font-size: 20px">
+                                    refresh
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                    <p class="font-label-sm text-xs text-secondary mt-1">
+                        At least 8 characters.
+                    </p>
+
+                    {#if pwError}
+                        <div class="mt-3 border-l-4 border-error bg-rose-50 px-3 py-2 flex items-start gap-2">
+                            <span class="material-symbols-outlined text-error" style="font-size: 18px">
+                                error
+                            </span>
+                            <p class="font-body-md text-sm text-on-surface">{pwError}</p>
+                        </div>
+                    {/if}
+                </div>
+                <div class="px-6 py-4 border-t border-zinc-100 flex justify-end gap-3">
+                    <button type="button" on:click={closePwModal} class="btn-outline px-5">
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        on:click={commitPasswordReset}
+                        class="btn-primary px-6"
+                        disabled={busy || pwInput.length < 8}
+                    >
+                        {busy ? 'Working…' : 'Reset'}
+                    </button>
+                </div>
+            {/if}
+        </div>
+    </div>
+{/if}
