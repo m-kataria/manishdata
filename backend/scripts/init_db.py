@@ -43,6 +43,23 @@ def _ensure_users_columns() -> None:
         if "reports_to" not in cols:
             conn.execute(text("ALTER TABLE users ADD COLUMN reports_to VARCHAR(80)"))
             print("Added 'reports_to' column to users.")
+        if "email" not in cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN email VARCHAR(255)"))
+            conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email "
+                    "ON users (email)"
+                )
+            )
+            print("Added 'email' column + unique index on users.")
+        if "mfa_enabled" not in cols:
+            conn.execute(
+                text(
+                    "ALTER TABLE users ADD COLUMN mfa_enabled BOOLEAN NOT NULL "
+                    "DEFAULT FALSE"
+                )
+            )
+            print("Added 'mfa_enabled' column to users.")
 
 
 def main() -> None:

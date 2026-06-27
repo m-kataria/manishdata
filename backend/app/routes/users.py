@@ -50,6 +50,15 @@ def create_user():
     if existing is not None:
         return jsonify({"error": "username already taken"}), 409
 
+    email = (data.get("email") or "").strip().lower() or None
+    if email is not None:
+        if db.session.query(User).filter_by(email=email).first() is not None:
+            return jsonify({"error": "email already in use"}), 409
+
+    mfa_enabled = bool(data.get("mfaEnabled"))
+    if mfa_enabled and not email:
+        return jsonify({"error": "email required to enable MFA"}), 400
+
     user = User(
         username=username,
         display_name=display_name or username,
@@ -58,6 +67,8 @@ def create_user():
         is_active=True,
         job_title=(data.get("jobTitle") or "").strip() or None,
         reports_to=(data.get("reportsTo") or "").strip() or None,
+        email=email,
+        mfa_enabled=mfa_enabled,
     )
     user.set_password(password)
     db.session.add(user)
@@ -86,6 +97,29 @@ def update_user(user_id: int):
     if "reportsTo" in data:
         user.reports_to = (data["reportsTo"] or "").strip() or None
         changed = True
+
+    if "email" in data:
+        new_email = (data["email"] or "").strip().lower() or None
+        if new_email != user.email:
+            if new_email is not None:
+                clash = (
+                    db.session.query(User)
+                    .filter(User.email == new_email, User.id != user.id)
+                    .first()
+                )
+                if clash is not None:
+                    return jsonify({"error": "email already in use"}), 409
+            user.email = new_email
+            changed = True
+
+    if "mfaEnabled" in data:
+        new_mfa = bool(data["mfaEnabled"])
+        if new_mfa != user.mfa_enabled:
+            # Email PATCH (above) has already been applied to user.email if present.
+            if new_mfa and not user.email:
+                return jsonify({"error": "email required to enable MFA"}), 400
+            user.mfa_enabled = new_mfa
+            changed = True
 
     if "password" in data and data["password"]:
         user.set_password(data["password"])

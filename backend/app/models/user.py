@@ -28,6 +28,10 @@ class User(UserMixin, db.Model):
     )
     job_title: Mapped[str | None] = mapped_column(String(80))
     reports_to: Mapped[str | None] = mapped_column(String(80))
+    email: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
+    mfa_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -52,5 +56,7 @@ class User(UserMixin, db.Model):
             "isActive": self.is_active,
             "jobTitle": self.job_title,
             "reportsTo": self.reports_to,
+            "email": self.email,
+            "mfaEnabled": self.mfa_enabled,
             "createdAt": self.created_at.isoformat() if self.created_at else None,
         }

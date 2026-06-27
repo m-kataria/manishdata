@@ -9,6 +9,8 @@ export type User = {
     isActive: boolean;
     jobTitle: string | null;
     reportsTo: string | null;
+    email: string | null;
+    mfaEnabled: boolean;
     createdAt: string | null;
 };
 

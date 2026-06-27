@@ -19,10 +19,12 @@
     let formError = '';
     let newUsername = '';
     let newDisplay = '';
+    let newEmail = '';
     let newPassword = '';
     let newAccess: UserRole = 'admin';
     let newJobTitle = '';
     let newReportsTo = '';
+    let newMfaEnabled = false;
 
     async function createUser() {
         formError = '';
@@ -38,10 +40,12 @@
                 body: JSON.stringify({
                     username: newUsername.trim(),
                     displayName: newDisplay.trim() || undefined,
+                    email: newEmail.trim() || undefined,
                     password: newPassword,
                     role: newAccess,
                     jobTitle: newJobTitle.trim() || undefined,
-                    reportsTo: newReportsTo || undefined
+                    reportsTo: newReportsTo || undefined,
+                    mfaEnabled: newMfaEnabled
                 })
             });
             if (!res.ok) {
@@ -51,10 +55,12 @@
             }
             newUsername = '';
             newDisplay = '';
+            newEmail = '';
             newPassword = '';
             newAccess = 'admin';
             newJobTitle = '';
             newReportsTo = '';
+            newMfaEnabled = false;
             await invalidateAll();
         } finally {
             busy = false;
@@ -63,7 +69,13 @@
 
     async function patchUser(
         user: User,
-        body: Partial<{ role: UserRole; jobTitle: string; reportsTo: string }>
+        body: Partial<{
+            role: UserRole;
+            jobTitle: string;
+            reportsTo: string;
+            email: string;
+            mfaEnabled: boolean;
+        }>
     ): Promise<boolean> {
         busy = true;
         try {
@@ -111,6 +123,22 @@
         if (!ok) target.value = user.reportsTo ?? '';
     }
 
+    async function onEmailBlur(user: User, ev: Event) {
+        const target = ev.currentTarget as HTMLInputElement;
+        const next = target.value.trim();
+        if (next === (user.email ?? '')) return;
+        const ok = await patchUser(user, { email: next });
+        if (!ok) target.value = user.email ?? '';
+    }
+
+    async function onMfaToggle(user: User, ev: Event) {
+        const target = ev.currentTarget as HTMLInputElement;
+        const next = target.checked;
+        if (next === user.mfaEnabled) return;
+        const ok = await patchUser(user, { mfaEnabled: next });
+        if (!ok) target.checked = user.mfaEnabled;
+    }
+
     async function deleteUser(user: User) {
         const msg =
             `Remove ${user.username}? This blocks their access immediately.\n` +
@@ -131,15 +159,16 @@
     }
 </script>
 
-<div class="px-8 py-8 mx-auto max-w-[1380px]">
+<div class="px-8 py-8 mx-auto max-w-[1580px]">
     <div class="mb-8">
         <p class="eyebrow mb-1">Settings</p>
         <h1 class="font-h2 text-h2 text-on-surface font-semibold">Users.</h1>
         <p class="font-body-md text-sm text-secondary mt-2 max-w-2xl">
             Manage portal access. <strong>Access</strong> controls permissions
             (Superadmin can delete; Admin cannot). <strong>Role</strong> is a free-text
-            job title for who-is-who. <strong>Reports&nbsp;to</strong> records the
-            manager.
+            job title. <strong>Reports&nbsp;to</strong> records the manager.
+            <strong>Email</strong> is used for password reset and the 2FA email-code
+            challenge (when 2FA is on for that user).
         </p>
     </div>
 
@@ -181,6 +210,17 @@
                 />
             </div>
             <div class="flex flex-col gap-1">
+                <label for="nu-email" class="field-label">Email</label>
+                <input
+                    id="nu-email"
+                    type="email"
+                    bind:value={newEmail}
+                    placeholder="for password reset + MFA"
+                    class="field"
+                    autocomplete="off"
+                />
+            </div>
+            <div class="flex flex-col gap-1">
                 <label for="nu-password" class="field-label">Password</label>
                 <input
                     id="nu-password"
@@ -191,6 +231,7 @@
                     required
                 />
             </div>
+
             <div class="flex flex-col gap-1">
                 <label for="nu-access" class="field-label">Access</label>
                 <select id="nu-access" bind:value={newAccess} class="field">
@@ -198,7 +239,6 @@
                     <option value="superadmin">Superadmin</option>
                 </select>
             </div>
-
             <div class="flex flex-col gap-1">
                 <label for="nu-jobtitle" class="field-label">Role</label>
                 <input
@@ -218,8 +258,23 @@
                     {/each}
                 </select>
             </div>
-            <div class="md:col-span-2 flex">
-                <button type="submit" class="btn-primary w-full" disabled={busy}>
+            <div class="flex flex-col gap-1">
+                <span class="field-label">2FA</span>
+                <label class="inline-flex items-center gap-2 h-[42px] px-3 border border-zinc-300 rounded-md cursor-pointer">
+                    <input
+                        type="checkbox"
+                        bind:checked={newMfaEnabled}
+                        class="h-4 w-4"
+                        disabled={!newEmail.trim()}
+                    />
+                    <span class="font-body-md text-sm text-on-surface">
+                        Email code on login
+                    </span>
+                </label>
+            </div>
+
+            <div class="md:col-span-4 flex justify-end">
+                <button type="submit" class="btn-primary px-8" disabled={busy}>
                     {busy ? 'Working…' : '+ Add user'}
                 </button>
             </div>
@@ -244,9 +299,11 @@
                         <th class="w-12">ID</th>
                         <th>Username</th>
                         <th>Display name</th>
+                        <th>Email</th>
                         <th>Access</th>
                         <th>Role</th>
                         <th>Reports to</th>
+                        <th class="text-center">2FA</th>
                         <th>Created</th>
                         <th class="text-right">Actions</th>
                     </tr>
@@ -263,6 +320,16 @@
                                 {/if}
                             </td>
                             <td>{u.displayName ?? '—'}</td>
+                            <td>
+                                <input
+                                    type="email"
+                                    class="field !py-1 !text-xs w-full min-w-[200px]"
+                                    value={u.email ?? ''}
+                                    placeholder="—"
+                                    on:blur={(e) => onEmailBlur(u, e)}
+                                    disabled={busy}
+                                />
+                            </td>
                             <td>
                                 <select
                                     class="field !py-1 !text-xs"
@@ -297,6 +364,16 @@
                                         <option value={opt}>{opt}</option>
                                     {/each}
                                 </select>
+                            </td>
+                            <td class="text-center">
+                                <input
+                                    type="checkbox"
+                                    class="h-4 w-4"
+                                    checked={u.mfaEnabled}
+                                    on:change={(e) => onMfaToggle(u, e)}
+                                    disabled={busy || !u.email}
+                                    title={!u.email ? 'Set an email first' : 'Email code on login'}
+                                />
                             </td>
                             <td class="text-secondary text-xs">
                                 {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
