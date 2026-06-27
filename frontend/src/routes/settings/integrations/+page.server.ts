@@ -1,9 +1,13 @@
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { callBackend } from '$lib/api';
 import type { IntegrationStatus, PingResult, SyncLog } from '$lib/types';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
+    const parent = await event.parent();
+    if (!parent.user || parent.user.role !== 'superadmin') {
+        throw redirect(303, '/');
+    }
     const [status, log] = await Promise.all([
         callBackend<IntegrationStatus>(event, '/api/integrations'),
         callBackend<SyncLog[]>(event, '/api/integrations/sync-log')

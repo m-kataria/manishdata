@@ -41,12 +41,14 @@
     type NavItem = { href: string; label: string };
     // The top app bar already covers Home / Customers / Quotes / Orders / Inventory /
     // Pricing / Jobs / Help — the sidebar is reserved for settings + utility links.
-    // Integrations sits at the bottom of the list as a less-frequently-touched item.
-    $: nav = [
-        ...(data.user?.role === 'superadmin' ? [{ href: '/users', label: 'Users' }] : []),
-        { href: '/support', label: 'Contact Support' },
-        { href: '/settings/integrations', label: 'Integrations' }
-    ] satisfies NavItem[];
+    // Users + Integrations are superadmin-only; everyone sees Contact Support.
+    $: nav = (data.user?.role === 'superadmin'
+        ? [
+              { href: '/users', label: 'Users' },
+              { href: '/support', label: 'Contact Support' },
+              { href: '/settings/integrations', label: 'Integrations' }
+          ]
+        : [{ href: '/support', label: 'Contact Support' }]) satisfies NavItem[];
 
     $: bcOnline =
         !!data.integrations?.businessCentral.configured &&
