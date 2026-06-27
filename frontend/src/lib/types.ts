@@ -7,6 +7,8 @@ export type User = {
     isAdmin: boolean;
     role: UserRole;
     isActive: boolean;
+    jobTitle: string | null;
+    reportsTo: string | null;
     createdAt: string | null;
 };
 

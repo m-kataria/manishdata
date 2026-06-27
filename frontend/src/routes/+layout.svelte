@@ -48,7 +48,8 @@
         { href: '/help', label: 'Help' },
         { href: '/inventory', label: 'Inventory' },
         { href: '/pricing', label: 'Pricing' },
-        { href: '/settings/integrations', label: 'Integrations' }
+        { href: '/settings/integrations', label: 'Integrations' },
+        { href: '/support', label: 'Support' }
     ];
     $: nav = data.user?.role === 'superadmin'
         ? [...baseNav, { href: '/users', label: 'Users' }]

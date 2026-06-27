@@ -37,6 +37,12 @@ def _ensure_users_columns() -> None:
                 )
             )
             print("Added 'is_active' column to users (default TRUE).")
+        if "job_title" not in cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN job_title VARCHAR(80)"))
+            print("Added 'job_title' column to users.")
+        if "reports_to" not in cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN reports_to VARCHAR(80)"))
+            print("Added 'reports_to' column to users.")
 
 
 def main() -> None:

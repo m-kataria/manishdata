@@ -26,6 +26,8 @@ class User(UserMixin, db.Model):
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="1"
     )
+    job_title: Mapped[str | None] = mapped_column(String(80))
+    reports_to: Mapped[str | None] = mapped_column(String(80))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -48,5 +50,7 @@ class User(UserMixin, db.Model):
             "isAdmin": self.is_admin,
             "role": self.role,
             "isActive": self.is_active,
+            "jobTitle": self.job_title,
+            "reportsTo": self.reports_to,
             "createdAt": self.created_at.isoformat() if self.created_at else None,
         }

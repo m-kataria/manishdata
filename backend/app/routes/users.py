@@ -56,6 +56,8 @@ def create_user():
         is_admin=True,
         role=role,
         is_active=True,
+        job_title=(data.get("jobTitle") or "").strip() or None,
+        reports_to=(data.get("reportsTo") or "").strip() or None,
     )
     user.set_password(password)
     db.session.add(user)
@@ -75,6 +77,14 @@ def update_user(user_id: int):
 
     if "displayName" in data:
         user.display_name = (data["displayName"] or "").strip() or None
+        changed = True
+
+    if "jobTitle" in data:
+        user.job_title = (data["jobTitle"] or "").strip() or None
+        changed = True
+
+    if "reportsTo" in data:
+        user.reports_to = (data["reportsTo"] or "").strip() or None
         changed = True
 
     if "password" in data and data["password"]:
