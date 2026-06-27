@@ -1,10 +1,18 @@
 <div class="px-8 py-8 mx-auto max-w-[760px]">
-    <div class="mb-8">
-        <p class="eyebrow mb-1">Help</p>
-        <h1 class="font-h2 text-h2 text-on-surface font-semibold">Support.</h1>
-        <p class="font-body-md text-sm text-secondary mt-2 max-w-xl">
-            Hit a snag with the portal? Reach out to the team — we'll get you sorted.
-        </p>
+    <div class="mb-8 flex items-start gap-5">
+        <!-- Brand mark — matches the sidebar / top-bar identity -->
+        <div
+            class="flex-shrink-0 inline-flex items-center justify-center h-16 w-16 rounded-card bg-gradient-to-br from-zinc-900 to-zinc-700 text-white font-h2 text-2xl font-bold leading-none shadow-md"
+        >
+            ICC<span class="text-primary-container">.</span>
+        </div>
+        <div>
+            <p class="eyebrow mb-1">Help</p>
+            <h1 class="font-h2 text-h2 text-on-surface font-semibold">Support.</h1>
+            <p class="font-body-md text-sm text-secondary mt-2 max-w-xl">
+                Hit a snag with the portal? Reach out to the team — we'll get you sorted.
+            </p>
+        </div>
     </div>
 
     <section class="card">
