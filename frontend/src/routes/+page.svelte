@@ -611,10 +611,10 @@
     /* AI mascot robot — flies in on load and perches on top of the AI tile */
     .tis-robot-wrap {
         position: absolute;
-        top: -22px;
+        top: -30px;
         left: 50%;
-        width: 38px;
-        height: 38px;
+        width: 52px;
+        height: 52px;
         transform: translateX(-50%);
         z-index: 6;
         pointer-events: none;
