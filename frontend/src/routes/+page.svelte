@@ -88,13 +88,15 @@
     $: channelsOnline = (bcOk ? 1 : 0) + (sfOk ? 1 : 0);
 
     const tiles = [
-        { href: '/customers', label: 'Customers', sub: 'Accounts', icon: 'groups' },
-        { href: '/quotes', label: 'Sales Quotes', sub: 'Quote & price', icon: 'request_quote' },
-        { href: '/orders', label: 'Sales Orders', sub: 'Fulfillment', icon: 'receipt_long' },
-        { href: '/inventory', label: 'Inventory', sub: 'Stock & SKUs', icon: 'inventory_2' },
-        { href: '/pricing', label: 'Pricing', sub: 'Group prices', icon: 'sell' },
-        { href: '/jobs', label: 'Jobs', sub: 'Field service', icon: 'engineering' },
-        { href: '/help', label: 'Help', sub: 'Training & tools', icon: 'help' }
+        { href: '/crm', label: 'CRM', sub: 'Leads & deals', icon: 'hub', special: '' },
+        { href: '/customers', label: 'Customers', sub: 'Accounts', icon: 'groups', special: '' },
+        { href: '/quotes', label: 'Quotes', sub: 'Quote & price', icon: 'request_quote', special: '' },
+        { href: '/orders', label: 'Orders', sub: 'Fulfillment', icon: 'receipt_long', special: '' },
+        { href: '/inventory', label: 'Inventory', sub: 'Stock & SKUs', icon: 'inventory_2', special: '' },
+        { href: '/pricing', label: 'Pricing', sub: 'Group prices', icon: 'sell', special: '' },
+        { href: '/jobs', label: 'Jobs', sub: 'Field service', icon: 'engineering', special: '' },
+        { href: '/ai-agents', label: 'AI Agents', sub: 'Live workforce', icon: 'auto_awesome', special: 'ai' },
+        { href: '/help', label: 'Help', sub: 'Training & tools', icon: 'help', special: '' }
     ];
 </script>
 
@@ -123,15 +125,41 @@
         <!-- Quick Access tiles -->
         <section class="mb-10">
             <p class="tis-eyebrow mb-4">Quick Access</p>
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 gap-3">
                 {#each tiles as tile, i}
                     <a
                         href={tile.href}
                         class="tis-tile tis-fade"
-                        style="--d:{80 + i * 60}ms"
+                        class:tis-tile-ai={tile.special === 'ai'}
+                        style="--d:{80 + i * 50}ms"
                     >
                         <span class="tis-tile-glow" aria-hidden="true"></span>
                         <span class="tis-tile-grid" aria-hidden="true"></span>
+
+                        {#if tile.special === 'ai'}
+                            <span class="tis-robot-wrap" aria-hidden="true">
+                                <svg viewBox="0 0 48 48" class="tis-robot-svg">
+                                    <!-- Antenna -->
+                                    <line x1="24" y1="3" x2="24" y2="10" stroke="#22d3ee" stroke-width="1.8" stroke-linecap="round"/>
+                                    <circle cx="24" cy="3" r="2.4" fill="#00d9ff"/>
+                                    <!-- Head -->
+                                    <rect x="8" y="11" width="32" height="28" rx="9" fill="#0f1530" stroke="#22d3ee" stroke-width="1.6"/>
+                                    <!-- Side ears -->
+                                    <rect x="3.5" y="19" width="3.5" height="11" rx="1.75" fill="#0a0e27" stroke="#22d3ee" stroke-width="1"/>
+                                    <rect x="41" y="19" width="3.5" height="11" rx="1.75" fill="#0a0e27" stroke="#22d3ee" stroke-width="1"/>
+                                    <!-- Eye glows -->
+                                    <circle cx="17" cy="23" r="3" fill="#00d9ff"/>
+                                    <circle cx="31" cy="23" r="3" fill="#00d9ff"/>
+                                    <circle cx="17" cy="22" r="1" fill="#ffffff" opacity="0.85"/>
+                                    <circle cx="31" cy="22" r="1" fill="#ffffff" opacity="0.85"/>
+                                    <!-- Mouth -->
+                                    <rect x="16" y="30" width="16" height="2.8" rx="1.4" fill="#22d3ee" opacity="0.75"/>
+                                    <!-- Cheek dots -->
+                                    <circle cx="12" cy="28" r="1.1" fill="#ec4899" opacity="0.65"/>
+                                    <circle cx="36" cy="28" r="1.1" fill="#ec4899" opacity="0.65"/>
+                                </svg>
+                            </span>
+                        {/if}
 
                         <div class="relative">
                             <span class="tis-tile-icon material-symbols-outlined">{tile.icon}</span>
@@ -380,7 +408,7 @@
             radial-gradient(900px 500px at 95% 10%, rgba(168, 85, 247, 0.08), transparent 60%),
             linear-gradient(180deg, #050816 0%, #0a0e27 60%, #050816 100%);
         color: #ffffff;
-        overflow: hidden;
+        overflow-x: clip; /* clip horizontal noise but let the robot fly in from above */
     }
 
     /* Grid texture backdrop */
@@ -497,11 +525,11 @@
     /* Tiles */
     .tis-tile {
         position: relative;
-        overflow: hidden;
-        border-radius: 16px;
+        overflow: visible; /* robot can spill above the tile */
+        border-radius: 14px;
         background: linear-gradient(160deg, rgba(15, 21, 48, 0.95) 0%, rgba(10, 14, 39, 0.95) 100%);
         border: 1px solid rgba(0, 217, 255, 0.15);
-        padding: 1.25rem;
+        padding: 0.85rem;
         aspect-ratio: 5 / 4;
         display: flex;
         flex-direction: column;
@@ -512,65 +540,135 @@
     .tis-tile:hover {
         transform: translateY(-2px);
         border-color: rgba(0, 217, 255, 0.5);
-        box-shadow: 0 0 28px rgba(0, 217, 255, 0.18), inset 0 0 12px rgba(0, 217, 255, 0.05);
+        box-shadow: 0 0 24px rgba(0, 217, 255, 0.18), inset 0 0 12px rgba(0, 217, 255, 0.05);
+    }
+    /* AI tile gets a stronger ambient glow so the robot reads as "perched" */
+    .tis-tile-ai {
+        border-color: rgba(0, 217, 255, 0.40);
+        box-shadow: 0 0 18px rgba(0, 217, 255, 0.18);
     }
     .tis-tile-glow {
         position: absolute;
-        top: -40px;
-        right: -40px;
-        width: 140px;
-        height: 140px;
+        top: -30px;
+        right: -30px;
+        width: 110px;
+        height: 110px;
         border-radius: 9999px;
         background: radial-gradient(circle, rgba(0, 217, 255, 0.35), transparent 70%);
-        filter: blur(20px);
+        filter: blur(18px);
         opacity: 0.55;
         transition: opacity 0.3s ease;
     }
     .tis-tile:hover .tis-tile-glow { opacity: 1; }
+    .tis-tile-ai .tis-tile-glow { opacity: 0.8; }
     .tis-tile-grid {
         position: absolute;
         inset: 0;
         opacity: 0.06;
         background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0);
-        background-size: 14px 14px;
+        background-size: 12px 12px;
         pointer-events: none;
+        border-radius: 14px;
     }
     .tis-tile-icon {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 0.5rem;
-        border-radius: 12px;
+        padding: 0.35rem;
+        border-radius: 10px;
         background: rgba(0, 217, 255, 0.10);
         border: 1px solid rgba(0, 217, 255, 0.25);
         color: #22d3ee;
-        font-size: 28px !important;
-        box-shadow: 0 0 16px rgba(0, 217, 255, 0.18);
+        font-size: 22px !important;
+        box-shadow: 0 0 14px rgba(0, 217, 255, 0.18);
     }
     .tis-tile-label {
-        font-size: 0.875rem;
+        font-size: 0.72rem;
         font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
-        line-height: 1.2;
+        letter-spacing: 0.04em;
+        line-height: 1.15;
         color: #ffffff;
     }
     .tis-tile-sub {
-        font-size: 0.7rem;
+        font-size: 0.6rem;
         color: rgba(255, 255, 255, 0.5);
-        margin-top: 0.25rem;
+        margin-top: 0.2rem;
     }
     .tis-tile-arrow {
         position: absolute;
-        bottom: 1rem;
-        right: 1rem;
-        font-size: 18px !important;
+        bottom: 0.6rem;
+        right: 0.6rem;
+        font-size: 14px !important;
         color: rgba(255, 255, 255, 0.35);
         transition: transform 0.25s ease, color 0.25s ease;
     }
     .tis-tile:hover .tis-tile-arrow {
         color: #00d9ff;
         transform: translateX(2px);
+    }
+
+    /* AI mascot robot — flies in on load and perches on top of the AI tile */
+    .tis-robot-wrap {
+        position: absolute;
+        top: -22px;
+        left: 50%;
+        width: 38px;
+        height: 38px;
+        transform: translateX(-50%);
+        z-index: 6;
+        pointer-events: none;
+    }
+    .tis-robot-svg {
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        transform-origin: center bottom;
+        filter: drop-shadow(0 3px 8px rgba(0, 217, 255, 0.55));
+        animation:
+            tis-robot-fly 1.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.45s forwards,
+            tis-robot-bob 2.6s ease-in-out 2.4s infinite;
+    }
+    @keyframes tis-robot-fly {
+        0% {
+            opacity: 0;
+            transform: translate(-280px, -180px) rotate(-200deg) scale(0.32);
+        }
+        45% {
+            opacity: 1;
+            transform: translate(-40px, -70px) rotate(-40deg) scale(0.8);
+        }
+        78% {
+            opacity: 1;
+            transform: translate(6px, 6px) rotate(10deg) scale(1.08);
+        }
+        100% {
+            opacity: 1;
+            transform: translate(0, 0) rotate(0deg) scale(1);
+        }
+    }
+    @keyframes tis-robot-bob {
+        0%, 100% { transform: translateY(0) rotate(0deg); }
+        50% { transform: translateY(-3px) rotate(-2deg); }
+    }
+
+    /* Faint "landing puff" ring under the robot, fires once after landing */
+    .tis-robot-wrap::after {
+        content: '';
+        position: absolute;
+        bottom: -6px;
+        left: 50%;
+        width: 28px;
+        height: 6px;
+        border-radius: 9999px;
+        transform: translateX(-50%);
+        background: radial-gradient(ellipse at center, rgba(0, 217, 255, 0.55), transparent 70%);
+        opacity: 0;
+        animation: tis-robot-puff 0.7s ease-out 2.0s forwards;
+    }
+    @keyframes tis-robot-puff {
+        0% { opacity: 0.9; transform: translateX(-50%) scaleX(0.4); }
+        100% { opacity: 0; transform: translateX(-50%) scaleX(1.6); }
     }
 
     /* Panel (donut + recent lists) */
