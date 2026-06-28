@@ -25,8 +25,8 @@
     >
         <!-- Wordmark -->
         <div class="mb-8 section-heading">
-            <p class="eyebrow mb-1">Nerval Corporation · est. 1985</p>
-            <h1 class="font-h2 text-h2 text-on-surface font-semibold">ICC Operations.</h1>
+            <p class="eyebrow mb-1">Client Portal</p>
+            <h1 class="font-h2 text-h2 text-on-surface font-semibold">TotalITsuite</h1>
         </div>
 
         <div class="flex flex-col gap-5">
