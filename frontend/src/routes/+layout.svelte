@@ -325,12 +325,14 @@
             <nav class="flex-1 flex items-center justify-center gap-1 overflow-x-auto no-scrollbar">
                 {#each [
                     { href: '/', label: 'Home', icon: 'home', exact: true },
+                    { href: '/crm', label: 'CRM', icon: 'hub' },
                     { href: '/customers', label: 'Customers', icon: 'groups' },
                     { href: '/quotes', label: 'Quotes', icon: 'request_quote' },
                     { href: '/orders', label: 'Orders', icon: 'receipt_long' },
                     { href: '/inventory', label: 'Inventory', icon: 'inventory_2' },
                     { href: '/pricing', label: 'Pricing', icon: 'sell' },
                     { href: '/jobs', label: 'Jobs', icon: 'engineering' },
+                    { href: '/ai-agents', label: 'AI', icon: 'auto_awesome' },
                     { href: '/help', label: 'Help', icon: 'help' }
                 ] as item}
                     {@const isActive = item.exact ? path === item.href : path.startsWith(item.href)}
