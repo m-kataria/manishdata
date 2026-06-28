@@ -27,70 +27,68 @@ export default {
         },
         extend: {
             colors: {
-                // ── Primary = ICC Teal (accent / CTAs / highlights) ─────────
-                // Kept as `primary*` so existing utility classes
-                // (bg-primary-container, text-on-primary-container, etc.) re-skin.
+                // ── Primary = TotalITsuite electric cyan ─────────
                 primary: {
-                    DEFAULT: '#3ba5a5', // teal-dark — hover state
-                    container: '#4ec5c5', // teal — accents, primary actions
-                    fixed: '#cdeeee',
-                    'fixed-dim': '#9bdcdc'
+                    DEFAULT: '#22d3ee',
+                    container: '#00d9ff',
+                    fixed: '#0a323a',
+                    'fixed-dim': '#155060'
                 },
-                'on-primary': '#0d2942', // navy text on teal
-                'on-primary-container': '#0d2942',
-                'on-primary-fixed': '#0d2942',
-                'on-primary-fixed-variant': '#15405f',
-                'inverse-primary': '#4ec5c5',
+                'on-primary': '#0a0e27',
+                'on-primary-container': '#0a0e27',
+                'on-primary-fixed': '#cdf8ff',
+                'on-primary-fixed-variant': '#22d3ee',
+                'inverse-primary': '#00d9ff',
 
-                // ── Secondary = muted slate (captions / helper text) ────────
+                // ── Secondary = muted gray for dark surfaces ────────
                 secondary: {
-                    DEFAULT: '#6b7785',
-                    container: '#e5e7eb',
-                    fixed: '#e5e7eb',
-                    'fixed-dim': '#cbd1d8'
+                    DEFAULT: '#9aa5b8',
+                    container: '#1a1f3a',
+                    fixed: '#1a1f3a',
+                    'fixed-dim': '#252b4a'
                 },
-                'on-secondary': '#ffffff',
-                'on-secondary-container': '#0d2942',
+                'on-secondary': '#0a0e27',
+                'on-secondary-container': '#ffffff',
 
-                // ── Tertiary = Navy (deep brand) ───────────────────────────
+                // ── Tertiary = white text / cyan highlight ───────────────────
                 tertiary: {
-                    DEFAULT: '#0d2942',
-                    container: '#15405f'
+                    DEFAULT: '#ffffff',
+                    container: '#22d3ee'
                 },
-                'on-tertiary': '#ffffff',
-                'on-tertiary-container': '#cdeeee',
+                'on-tertiary': '#0a0e27',
+                'on-tertiary-container': '#0a0e27',
 
                 // ── Error ──────────────────────────────────────────────────
                 error: {
-                    DEFAULT: '#b91c1c',
-                    container: '#fee2e2'
+                    DEFAULT: '#ef4444',
+                    container: '#3f1212'
                 },
                 'on-error': '#ffffff',
-                'on-error-container': '#7f1d1d',
+                'on-error-container': '#fecaca',
 
-                // ── Surfaces (ICC off-white background, white cards) ────────
-                background: '#f7f9fa',
+                // ── Surfaces (TotalITsuite dark navy) ────────
+                background: '#0a0e27',
                 surface: {
-                    DEFAULT: '#f7f9fa',
-                    bright: '#ffffff',
-                    dim: '#e5e7eb',
-                    'container-lowest': '#ffffff',
-                    'container-low': '#f7f9fa',
-                    container: '#f1f4f6',
-                    'container-high': '#e9eef1',
-                    'container-highest': '#dde3e8',
-                    variant: '#e5e7eb'
+                    DEFAULT: '#0a0e27',
+                    bright: '#15193a',
+                    dim: '#050816',
+                    'container-lowest': '#050816',
+                    'container-low': '#0a0e27',
+                    container: '#0f1530',
+                    'container-high': '#15193a',
+                    'container-highest': '#1a1f3a',
+                    variant: '#15193a'
                 },
-                'on-background': '#0d2942',
-                'on-surface': '#0d2942',
-                'on-surface-variant': '#6b7785',
-                'inverse-surface': '#0d2942',
-                'inverse-on-surface': '#f7f9fa',
+                'on-background': '#ffffff',
+                'on-surface': '#ffffff',
+                'on-surface-variant': '#9aa5b8',
+                'inverse-surface': '#ffffff',
+                'inverse-on-surface': '#0a0e27',
 
                 // ── Outlines ───────────────────────────────────────────────
                 outline: {
-                    DEFAULT: '#d1d5db',
-                    variant: '#e5e7eb'
+                    DEFAULT: '#1f2a4a',
+                    variant: '#15193a'
                 },
 
                 // ── Explicit ICC brand aliases ─────────────────────────────
