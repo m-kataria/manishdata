@@ -174,7 +174,7 @@
                 Training videos and field tools.
             </p>
         </div>
-        <a href="mailto:support@nervalcorp.com" class="btn-ghost">
+        <a href="mailto:support@totalitsuite.com" class="btn-ghost">
             <span class="material-symbols-outlined mr-1" style="font-size: 18px">mail</span>
             Contact support
         </a>

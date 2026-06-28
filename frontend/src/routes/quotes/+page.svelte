@@ -131,7 +131,7 @@
             </p>
             <p class="font-label-sm text-xs text-secondary">
                 Source:
-                <span class="badge-bc ml-1">BC · ICC ENERGY INC LIVE</span>
+                <span class="badge-bc ml-1">BC · DEMO MODE</span>
             </p>
         </div>
 

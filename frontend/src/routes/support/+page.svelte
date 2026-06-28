@@ -4,7 +4,7 @@
         <div
             class="flex-shrink-0 inline-flex items-center justify-center h-16 w-16 rounded-card bg-gradient-to-br from-zinc-900 to-zinc-700 text-white font-h2 text-2xl font-bold leading-none shadow-md"
         >
-            ICC<span class="text-primary-container">.</span>
+            TIS<span class="text-primary-container">.</span>
         </div>
         <div>
             <p class="eyebrow mb-1">Help</p>
@@ -25,10 +25,10 @@
             </div>
             <div>
                 <a
-                    href="mailto:it@nervalcorp.com"
+                    href="mailto:support@totalitsuite.com"
                     class="font-body-md text-on-surface hover:text-primary-container underline decoration-zinc-300 hover:decoration-primary-container"
                 >
-                    it@nervalcorp.com
+                    support@totalitsuite.com
                 </a>
             </div>
 

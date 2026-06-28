@@ -120,10 +120,10 @@
                 </span>
             </button>
 
-            <!-- ICC brand mark (no link, just identity) -->
+            <!-- Brand mark (no link, just identity) -->
             <span class="flex items-center gap-2 flex-shrink-0 px-1 mr-2 hidden sm:flex">
                 <span class="font-h3 text-base font-semibold text-on-surface dark:text-zinc-100 leading-none">
-                    ICC<span class="text-primary-container">.</span>
+                    TIS<span class="text-primary-container">.</span>
                 </span>
             </span>
 
@@ -206,9 +206,9 @@
             <div class="px-5 py-6 border-b border-zinc-200 flex items-start justify-between gap-2">
                 <div>
                     <div class="font-h2 text-xl font-semibold text-on-surface leading-none">
-                        ICC<span class="text-primary-container">.</span>
+                        TIS<span class="text-primary-container">.</span>
                     </div>
-                    <div class="eyebrow mt-1.5">Operations</div>
+                    <div class="eyebrow mt-1.5">Client Portal</div>
                 </div>
                 <button
                     type="button"

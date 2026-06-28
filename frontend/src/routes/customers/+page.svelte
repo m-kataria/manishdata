@@ -45,7 +45,7 @@
                 {#if data.q}<span class="text-on-surface ml-2">· filter: "{data.q}"</span>{/if}
             </p>
             <p class="font-label-sm text-xs text-secondary">
-                Source: <span class="badge-bc ml-1">BC · ICC ENERGY INC LIVE</span>
+                Source: <span class="badge-bc ml-1">BC · DEMO MODE</span>
             </p>
         </div>
 
